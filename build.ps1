@@ -119,15 +119,16 @@ if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 
 # dist is not wiped. It holds the bridge jar, which costs a ForgeGradle build
 # to replace, and jars belonging to a running game cannot be deleted anyway.
-foreach ($jar in @("storm-agent.jar", "storm-launcher.jar")) {
-    $target = Join-Path $dist $jar
+# not $jar: that holds the path to jar.exe, set further up
+foreach ($jarName in @("storm-agent.jar", "storm-launcher.jar")) {
+    $target = Join-Path $dist $jarName
     if (-not (Test-Path $target)) { continue }
     try {
         $stream = [IO.File]::Open($target, 'Open', 'Write')
         $stream.Close()
     } catch {
         Write-Host ""
-        Write-Host "$jar is in use by another process." -ForegroundColor Red
+        Write-Host "$jarName is in use by another process." -ForegroundColor Red
         Write-Host "Close Minecraft and the Storm launcher, then run this again."
         Write-Host "A game started with -javaagent keeps the agent jar open until it exits."
         exit 1
