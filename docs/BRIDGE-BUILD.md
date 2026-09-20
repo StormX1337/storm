@@ -104,6 +104,19 @@ KillAura, AutoClicker, Criticals, Velocity, Reach, AntiBot, ESP, Tracers,
 Nametags, Trajectories, the HUD, the click GUI, configs and commands do not
 depend on them.
 
+## Rebuilding
+
+The bridge only has to be rebuilt when its own sources change. `build.ps1`
+leaves `dist\` alone apart from the two jars it produces, so the bridge
+survives a normal rebuild.
+
+Once the workspace has deobfuscated Minecraft, later builds take seconds:
+
+```powershell
+cd storm-bridge-1.8.9\workspace
+.\build-bridge.ps1
+```
+
 ## When it fails
 
 ForgeGradle 2.3 is old software talking to servers that have moved since.

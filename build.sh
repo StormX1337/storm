@@ -40,7 +40,9 @@ if [ "$VERSION" -lt 17 ]; then
     exit 1
 fi
 
-rm -rf "$OUT" "$DIST"
+# dist keeps whatever else is in it, in particular the bridge jar, which costs
+# a whole ForgeGradle build to replace
+rm -rf "$OUT"
 mkdir -p "$OUT/core" "$OUT/agent" "$OUT/launcher" "$OUT/test" "$DIST"
 
 # ---- storm-core ---------------------------------------------------
