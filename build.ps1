@@ -123,9 +123,20 @@ foreach ($dir in @("core", "agent", "launcher", "test")) {
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 
 function Write-SourceList($sourceDir, $listFile) {
-    Get-ChildItem -Path $sourceDir -Recurse -Filter *.java |
-        ForEach-Object { $_.FullName } |
-        Set-Content -Path $listFile -Encoding UTF8
+    $files = @(Get-ChildItem -Path $sourceDir -Recurse -Filter *.java |
+        ForEach-Object { $_.FullName -replace '\\', '/' })
+
+    if ($files.Count -eq 0) {
+        Write-Host "no sources found under $sourceDir" -ForegroundColor Red
+        exit 1
+    }
+
+    # Two Windows traps in one line. Set-Content -Encoding UTF8 writes a BOM on
+    # PowerShell 5.1 and javac reads it as part of the first file name, and a
+    # backslash is an escape character inside an argument file, so the paths go
+    # in with forward slashes.
+    $noBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines($listFile, $files, $noBom)
 }
 
 function Invoke-Step($name, $scriptBlock) {

@@ -208,6 +208,11 @@ $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot"
 .\build.ps1 test
 ```
 
+**`error: Invalid filename: ?F:\...`**
+
+An older `build.ps1`. The source list was written with a byte order mark, which
+javac read as part of the first file name. Pull and run it again.
+
 **The launcher says "no attach API"**
 
 It is running on a JRE. Start it with the `java` from a JDK:
