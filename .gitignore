@@ -11,3 +11,5 @@ run/
 .vscode/
 .DS_Store
 storm-launcher.json
+build-out/
+dist/

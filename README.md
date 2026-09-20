@@ -99,6 +99,20 @@ profiles as readable JSON.
 
 ## Building
 
+You need a **JDK 17 or newer**. Two ways, pick either.
+
+**Without Gradle** &mdash; one script, no downloads, no wrapper, no network:
+
+```bash
+./build.sh test            # Linux / macOS
+.\build.ps1 test           # Windows PowerShell
+```
+
+It writes `dist/storm-agent.jar` and `dist/storm-launcher.jar`, ready to use,
+and `test` also runs the smoke test.
+
+**With Gradle:**
+
 ```bash
 ./gradlew build            # core, agent and launcher
 ./gradlew :storm-core:smokeTest
@@ -117,8 +131,12 @@ deobfuscated jar into `storm-bridge-1.8.9/libs/`.
 ## Running
 
 ```bash
+cd dist
 java -jar storm-launcher.jar
 ```
+
+Start it with a **JDK**, not a JRE. Without an attach provider the injection
+page cannot work, and the launcher says so in the top right corner.
 
 The launcher has two ways in:
 
@@ -152,6 +170,59 @@ Adding one is described in [docs/BRIDGE.md](docs/BRIDGE.md).
 
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) &mdash; how the pieces fit together
 * [docs/BRIDGE.md](docs/BRIDGE.md) &mdash; writing a bridge for another version
+
+## Troubleshooting
+
+**`Cannot find JAR 'kotlin-compiler-embeddable-...jar' required by module
+'gradle-declarative-dsl-core'`**
+
+The Gradle wrapper distribution downloaded only partially. Delete it and let the
+wrapper fetch it again:
+
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\wrapper\dists\gradle-8.14.3-bin"
+.\gradlew build
+```
+
+```bash
+rm -rf ~/.gradle/wrapper/dists/gradle-8.14.3-bin
+./gradlew build
+```
+
+Or skip Gradle entirely and use `build.ps1` / `build.sh`.
+
+**The stack trace ends in `Method.java:498`**
+
+That line number only exists in Java 8, so Gradle is running on a JDK 8. The
+launcher needs JDK 17+. Install one and point `JAVA_HOME` at it:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21"
+& "$env:JAVA_HOME\bin\java" -version
+```
+
+Make it permanent under *System Properties &rarr; Environment Variables*, or
+just use the build script, which picks `JAVA_HOME` up the same way.
+
+**The launcher says "no attach API"**
+
+It is running on a JRE. Start it with the `java` from a JDK:
+
+```bash
+"$JAVA_HOME/bin/java" -jar dist/storm-launcher.jar
+```
+
+**Injecting fails with "the target JVM does not allow attaching"**
+
+Java 21 and newer refuse dynamic agents by default. Start the game with
+`-XX:+EnableDynamicAgentLoading`, which the launcher's own *Play* path already
+does.
+
+**The agent attaches but nothing happens in game**
+
+Expected until the 1.8.9 bridge is built. The agent logs
+`bridge xyz.stormclient.bridge.mc189.StormBridge189 is not on the class path`.
+See the building section above.
 
 ## A word on where you use it
 
