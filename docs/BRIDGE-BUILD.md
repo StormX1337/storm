@@ -93,9 +93,24 @@ depend on them.
 ForgeGradle 2.3 is old software talking to servers that have moved since.
 The usual ones:
 
-* **`Could not resolve net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT`**
-  &mdash; the buildscript repositories are unreachable or jcenter is being slow.
-  Try again, then check that `https://maven.minecraftforge.net/` opens.
+* **`ForgeGradle x.y does not support Minecraft 1.8.9`** &mdash; wrong pairing.
+  ForgeGradle is tied to a narrow range of versions:
+
+  | ForgeGradle | Minecraft |
+  |---|---|
+  | 1.2 | 1.7.10 |
+  | **2.1** | **1.8 &ndash; 1.8.9** |
+  | 2.2 | 1.9, 1.10 |
+  | 2.3 | 1.11, 1.12 |
+
+  The workspace uses 2.1. Another pairing without editing anything:
+
+  ```powershell
+  .\build-bridge.ps1 -ForgeGradle 2.1-SNAPSHOT -GradleVersion 2.14.1
+  ```
+
+* **`Could not resolve net.minecraftforge.gradle:ForgeGradle`** &mdash; the Forge
+  maven is unreachable. Check that `https://maven.minecraftforge.net/` opens.
 * **`JAVA_HOME is set to an invalid directory`** &mdash; either it was set by hand
   to a path that does not exist, or you are on a `build-bridge.ps1` from before
   this was fixed, which wrote your user profile into it. Update and run it

@@ -1,28 +1,37 @@
 // ============================================================
 //  Build for the Minecraft 1.8.9 bridge.
 //
-//  Self contained on purpose. ForgeGradle 2.3 is the last thing
-//  that deobfuscates 1.8.9, it needs Gradle 4 and Java 8, and
-//  neither of those can build the rest of Storm. So this folder
+//  Self contained on purpose. ForgeGradle 2.1 is the toolchain
+//  that deobfuscates 1.8.9, it needs an old Gradle and Java 8,
+//  and neither can build the rest of Storm. So this folder
 //  has its own wrapper and is never part of the root build.
 //
-//  Run it with a JDK 8:
-//      set JAVA_HOME=C:\Program Files\Java\jdk1.8.0_504
-//      .\gradlew.bat setupDecompWorkspace
-//      .\gradlew.bat build
+//  Run it through build-bridge.ps1, which finds a JDK 8
+//  for you and passes the right Gradle and ForgeGradle
+//  versions.
 //
 //  The result is build\libs\storm-bridge-1.8.9.jar, which goes
 //  next to storm-agent.jar in dist\.
 // ============================================================
+// ForgeGradle is tied to a narrow range of Minecraft versions, and 2.3 already
+// refuses anything below 1.12. The pairing that covers 1.8.9 is 2.1.
+//
+//   ForgeGradle 1.2   ->  1.7.10
+//   ForgeGradle 2.1   ->  1.8 .. 1.8.9      <- this workspace
+//   ForgeGradle 2.2   ->  1.9, 1.10
+//   ForgeGradle 2.3   ->  1.11, 1.12
+//
+// Override without editing this file:
+//   .\build-bridge.ps1 -ForgeGradle 2.2-SNAPSHOT
 buildscript {
     repositories {
         maven { url = 'https://maven.minecraftforge.net/' }
         maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
         mavenCentral()
-        jcenter()
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        // jcenter is gone, so nothing here may rely on it
+        classpath "net.minecraftforge.gradle:ForgeGradle:${project.hasProperty('fgVersion') ? project.fgVersion : '2.1-SNAPSHOT'}"
     }
 }
 

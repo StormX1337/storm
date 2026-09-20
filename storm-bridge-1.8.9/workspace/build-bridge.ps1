@@ -9,7 +9,13 @@
 #  Usage:  .\build-bridge.ps1
 #          .\build-bridge.ps1 clean     rebuild from scratch
 # ============================================================
-param([string]$Task = "build")
+param(
+    [string]$Task = "build",
+    # ForgeGradle 2.1 covers 1.8.9; 2.2 covers 1.9/1.10, 2.3 covers 1.11/1.12
+    [string]$ForgeGradle = "2.1-SNAPSHOT",
+    # ForgeGradle 2.1 predates modern Gradle and will not run on 5 or newer
+    [string]$GradleVersion = "4.4.1"
+)
 
 $ErrorActionPreference = "Continue"
 Set-Location $PSScriptRoot
@@ -97,18 +103,29 @@ Write-Host ""
 # only for this process, the shell keeps whatever it had
 $env:JAVA_HOME = $java8
 
+$wrapper = Join-Path $PSScriptRoot "gradle\wrapper\gradle-wrapper.properties"
+$wanted = "distributionUrl=https\://services.gradle.org/distributions/gradle-$GradleVersion-bin.zip"
+$lines = Get-Content $wrapper | ForEach-Object {
+    if ($_ -like "distributionUrl=*") { $wanted } else { $_ }
+}
+Set-Content -Path $wrapper -Value $lines -Encoding ASCII
+Write-Host "gradle $GradleVersion, ForgeGradle $ForgeGradle"
+
 if ($Task -eq "clean") {
-    & .\gradlew.bat clean
+    & .\gradlew.bat clean "-PfgVersion=$ForgeGradle"
 }
 
-& .\gradlew.bat setupDecompWorkspace --no-daemon
+& .\gradlew.bat setupDecompWorkspace --no-daemon "-PfgVersion=$ForgeGradle"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "setupDecompWorkspace failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "if it said ForgeGradle does not support 1.8.9, try another pairing:"
+    Write-Host "  .\build-bridge.ps1 -ForgeGradle 2.1-SNAPSHOT -GradleVersion 2.14.1" -ForegroundColor Cyan
     exit 1
 }
 
-& .\gradlew.bat build --no-daemon
+& .\gradlew.bat build --no-daemon "-PfgVersion=$ForgeGradle"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "build failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red
