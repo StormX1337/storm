@@ -37,6 +37,11 @@ The script finds the JDK 8 itself, prints every JDK it saw so you can check it
 picked the right one, builds, and copies the jar into `dist\` next to the
 agent. The first run downloads and deobfuscates Minecraft and takes a while.
 
+It runs `setupCIWorkspace`, which deobfuscates without decompiling. The bridge
+compiles against Minecraft and never reads its source, so decompiling would be
+minutes and gigabytes spent on nothing. Pass `-Sources` if you want the
+decompiled code to read.
+
 The workspace has its own Gradle wrapper pinned to 4.10.3, so none of this
 disturbs the main build, and `JAVA_HOME` is only changed inside the script.
 
@@ -44,7 +49,7 @@ By hand, if you prefer:
 
 ```powershell
 $env:JAVA_HOME = "<your JDK 8, the path the script printed>"
-.\gradlew.bat setupDecompWorkspace
+.\gradlew.bat setupCIWorkspace
 .\gradlew.bat build
 copy build\libs\storm-bridge-1.8.9.jar ..\..\dist\
 ```
@@ -108,6 +113,17 @@ The usual ones:
   ```powershell
   .\build-bridge.ps1 -ForgeGradle 2.1-SNAPSHOT -GradleVersion 2.14.1
   ```
+
+* **`GC overhead limit exceeded`** &mdash; deobfuscation ran out of heap. The
+  workspace asks for 4 GB; give it more:
+
+  ```powershell
+  .\build-bridge.ps1 -Memory 6144
+  ```
+
+* **`WARNING: You are using an unsupported version of ForgeGradle`** &mdash;
+  expected. 2.1 has not been supported for years and is still the only thing
+  that handles 1.8.9.
 
 * **`Could not resolve net.minecraftforge.gradle:ForgeGradle`** &mdash; the Forge
   maven is unreachable. Check that `https://maven.minecraftforge.net/` opens.

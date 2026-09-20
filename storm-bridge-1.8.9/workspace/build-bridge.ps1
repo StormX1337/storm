@@ -14,7 +14,11 @@ param(
     # ForgeGradle 2.1 covers 1.8.9; 2.2 covers 1.9/1.10, 2.3 covers 1.11/1.12
     [string]$ForgeGradle = "2.1-SNAPSHOT",
     # ForgeGradle 2.1 predates modern Gradle and will not run on 5 or newer
-    [string]$GradleVersion = "4.4.1"
+    [string]$GradleVersion = "4.4.1",
+    # deobfuscation needs a lot of heap, raise this if it still runs out
+    [int]$Memory = 4096,
+    # decompiled Minecraft sources are only useful for reading, not for building
+    [switch]$Sources
 )
 
 $ErrorActionPreference = "Continue"
@@ -102,6 +106,7 @@ Write-Host ""
 
 # only for this process, the shell keeps whatever it had
 $env:JAVA_HOME = $java8
+$env:GRADLE_OPTS = "-Xmx${Memory}M"
 
 $wrapper = Join-Path $PSScriptRoot "gradle\wrapper\gradle-wrapper.properties"
 $wanted = "distributionUrl=https\://services.gradle.org/distributions/gradle-$GradleVersion-bin.zip"
@@ -115,17 +120,24 @@ if ($Task -eq "clean") {
     & .\gradlew.bat clean "-PfgVersion=$ForgeGradle"
 }
 
-& .\gradlew.bat setupDecompWorkspace --no-daemon "-PfgVersion=$ForgeGradle"
+# setupCIWorkspace deobfuscates without decompiling. The bridge compiles
+# against Minecraft and never reads its source, so the decompile step is
+# minutes of work and gigabytes of heap spent on nothing.
+$setup = if ($Sources) { "setupDecompWorkspace" } else { "setupCIWorkspace" }
+Write-Host "running $setup with ${Memory}M of heap"
+Write-Host ""
+
+& .\gradlew.bat $setup --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "setupDecompWorkspace failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red
     Write-Host ""
-    Write-Host "if it said ForgeGradle does not support 1.8.9, try another pairing:"
-    Write-Host "  .\build-bridge.ps1 -ForgeGradle 2.1-SNAPSHOT -GradleVersion 2.14.1" -ForegroundColor Cyan
+    Write-Host "GC overhead limit exceeded    ->  .\build-bridge.ps1 -Memory 6144" -ForegroundColor Cyan
+    Write-Host "does not support 1.8.9        ->  .\build-bridge.ps1 -ForgeGradle 2.1-SNAPSHOT -GradleVersion 2.14.1" -ForegroundColor Cyan
     exit 1
 }
 
-& .\gradlew.bat build --no-daemon "-PfgVersion=$ForgeGradle"
+& .\gradlew.bat build --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "build failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red
