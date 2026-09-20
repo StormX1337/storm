@@ -8,7 +8,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.scoreboard.Team;
+import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.EnumChatFormatting;
 
@@ -88,13 +88,19 @@ public class Mc189Entity implements IEntity {
                 && Minecraft.getMinecraft().getNetHandler().getPlayerInfo(entity.getUniqueID()) == null;
     }
 
+    /** 1.8.9 has no Entity#getTeam, the scoreboard is the way in. */
+    private ScorePlayerTeam team() {
+        if (entity.worldObj == null || entity.worldObj.getScoreboard() == null) return null;
+        return entity.worldObj.getScoreboard().getPlayersTeam(entity.getName());
+    }
+
     @Override public String teamName() {
-        Team team = entity.getTeam();
+        ScorePlayerTeam team = team();
         return team == null ? "" : team.getRegisteredName();
     }
 
     @Override public int teamColor() {
-        Team team = entity.getTeam();
+        ScorePlayerTeam team = team();
         if (team == null) return 0;
         String prefix = team.getColorPrefix();
         for (EnumChatFormatting format : EnumChatFormatting.values()) {

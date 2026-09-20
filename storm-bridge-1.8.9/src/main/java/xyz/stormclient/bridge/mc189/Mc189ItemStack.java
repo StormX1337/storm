@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
-import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemAxe;
@@ -91,14 +90,44 @@ public final class Mc189ItemStack implements IItemStack {
         return registryName().contains("golden_apple");
     }
 
+    /**
+     * Enchantment ids, because the registry list is private in 1.8.9 and
+     * getName() returns a translation key rather than anything recognisable.
+     */
+    private static final java.util.Map<String, Integer> ENCHANTMENTS =
+            new java.util.HashMap<String, Integer>();
+    static {
+        ENCHANTMENTS.put("protection", 0);
+        ENCHANTMENTS.put("fire_protection", 1);
+        ENCHANTMENTS.put("feather_falling", 2);
+        ENCHANTMENTS.put("blast_protection", 3);
+        ENCHANTMENTS.put("projectile_protection", 4);
+        ENCHANTMENTS.put("respiration", 5);
+        ENCHANTMENTS.put("aqua_affinity", 6);
+        ENCHANTMENTS.put("thorns", 7);
+        ENCHANTMENTS.put("depth_strider", 8);
+        ENCHANTMENTS.put("sharpness", 16);
+        ENCHANTMENTS.put("smite", 17);
+        ENCHANTMENTS.put("bane_of_arthropods", 18);
+        ENCHANTMENTS.put("knockback", 19);
+        ENCHANTMENTS.put("fire_aspect", 20);
+        ENCHANTMENTS.put("looting", 21);
+        ENCHANTMENTS.put("efficiency", 32);
+        ENCHANTMENTS.put("silk_touch", 33);
+        ENCHANTMENTS.put("unbreaking", 34);
+        ENCHANTMENTS.put("fortune", 35);
+        ENCHANTMENTS.put("power", 48);
+        ENCHANTMENTS.put("punch", 49);
+        ENCHANTMENTS.put("flame", 50);
+        ENCHANTMENTS.put("infinity", 51);
+        ENCHANTMENTS.put("luck_of_the_sea", 61);
+        ENCHANTMENTS.put("lure", 62);
+    }
+
     @Override public int enchantment(String name) {
-        if (isEmpty()) return 0;
-        for (Enchantment enchantment : Enchantment.enchantmentsList) {
-            if (enchantment == null) continue;
-            if (!enchantment.getName().toLowerCase().endsWith(name.toLowerCase())) continue;
-            return EnchantmentHelper.getEnchantmentLevel(enchantment.effectId, stack);
-        }
-        return 0;
+        if (isEmpty() || name == null) return 0;
+        Integer id = ENCHANTMENTS.get(name.toLowerCase().replace(' ', '_'));
+        return id == null ? 0 : EnchantmentHelper.getEnchantmentLevel(id, stack);
     }
 
     @Override public double attackDamage() {

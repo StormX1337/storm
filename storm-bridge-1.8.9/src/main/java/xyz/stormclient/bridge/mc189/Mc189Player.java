@@ -81,7 +81,13 @@ public final class Mc189Player extends Mc189Entity implements IPlayer {
     @Override public boolean isCollidedHorizontally() { return player.isCollidedHorizontally; }
     @Override public boolean isCollidedVertically()   { return player.isCollidedVertically; }
     @Override public boolean isOnLadder()   { return player.isOnLadder(); }
-    @Override public boolean isInWeb()      { return player.isInWeb; }
+    /** protected in Entity, so it is read reflectively once and cached */
+    private static final java.lang.reflect.Field IN_WEB =
+            Mc189Reflect.field(net.minecraft.entity.Entity.class, "isInWeb", "field_70134_J");
+
+    @Override public boolean isInWeb() {
+        return Mc189Reflect.getBoolean(IN_WEB, player, false);
+    }
     @Override public boolean isCreative()   { return player.capabilities.isCreativeMode; }
     @Override public boolean isSpectator()  { return Minecraft.getMinecraft().playerController.isSpectatorMode(); }
     @Override public boolean canBeHurt()    { return !player.capabilities.disableDamage; }

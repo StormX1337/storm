@@ -40,8 +40,16 @@ public final class Mc189Network implements INetwork {
         if (handler() == null || !(packet instanceof Mc189Packet)) return;
         try {
             Packet<?> raw = ((Mc189Packet) packet).handle();
-            raw.getClass().getMethod("processPacket", net.minecraft.network.INetHandler.class)
-                          .invoke(raw, handler());
+
+            // processPacket is declared with the concrete handler type, so it
+            // cannot be looked up by INetHandler.class
+            for (java.lang.reflect.Method method : raw.getClass().getMethods()) {
+                if (!"processPacket".equals(method.getName())) continue;
+                if (method.getParameterTypes().length != 1) continue;
+                method.invoke(raw, handler());
+                return;
+            }
+            StormLogger.debug("no processPacket on " + packet.rawName());
         } catch (Throwable t) {
             StormLogger.debug("could not replay " + packet.rawName() + ": " + t);
         }

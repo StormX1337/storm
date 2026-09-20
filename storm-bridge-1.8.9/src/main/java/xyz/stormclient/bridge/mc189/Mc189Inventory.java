@@ -2,7 +2,6 @@ package xyz.stormclient.bridge.mc189;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.inventory.ClickType;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.ContainerChest;
 import net.minecraft.item.ItemStack;
@@ -107,7 +106,4 @@ public final class Mc189Inventory implements IInventory {
         }
         return best;
     }
-
-    /** ClickType exists for readability on newer versions, 1.8.9 uses raw ints. */
-    static int mode(ClickType type) { return type == null ? 0 : type.ordinal(); }
 }
