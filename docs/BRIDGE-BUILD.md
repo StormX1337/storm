@@ -96,9 +96,10 @@ The usual ones:
 * **`Could not resolve net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT`**
   &mdash; the buildscript repositories are unreachable or jcenter is being slow.
   Try again, then check that `https://maven.minecraftforge.net/` opens.
-* **`JAVA_HOME is set to an invalid directory`** &mdash; you set it by hand to a
-  path that does not exist. Run `build-bridge.ps1` instead, it finds the JDK
-  and prints what it found.
+* **`JAVA_HOME is set to an invalid directory`** &mdash; either it was set by hand
+  to a path that does not exist, or you are on a `build-bridge.ps1` from before
+  this was fixed, which wrote your user profile into it. Update and run it
+  again; it prints the JDK it picked, and that line has to end in a JDK folder.
 * **`Unsupported class file major version`** &mdash; Gradle is running on a JDK
   that is too new. `JAVA_HOME` is not pointing at the JDK 8.
 * **`Could not find method compileOnly()`** &mdash; the wrapper did not pin to

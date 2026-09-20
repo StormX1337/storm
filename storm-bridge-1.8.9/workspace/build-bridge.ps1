@@ -63,10 +63,12 @@ $java8 = $null
 
 foreach ($candidate in $candidates) {
     $version = Get-JavacVersion $candidate
-    $home = Split-Path (Split-Path $candidate -Parent) -Parent
-    $mark = if ($version -eq 8) { "  <- using this" } else { "" }
-    Write-Host ("  JDK {0,-3} {1}{2}" -f $version, $home, $mark) -ForegroundColor DarkGray
-    if ($version -eq 8 -and -not $java8) { $java8 = $home }
+    # not $home: that is a read-only automatic variable in PowerShell, and
+    # assigning to it fails while leaving the user profile path in place
+    $jdkHome = Split-Path (Split-Path $candidate -Parent) -Parent
+    $mark = if ($version -eq 8 -and -not $java8) { "  <- using this" } else { "" }
+    Write-Host ("  JDK {0,-3} {1}{2}" -f $version, $jdkHome, $mark) -ForegroundColor DarkGray
+    if ($version -eq 8 -and -not $java8) { $java8 = $jdkHome }
 }
 
 if (-not $java8) {
@@ -77,6 +79,13 @@ if (-not $java8) {
     Write-Host "  winget install EclipseAdoptium.Temurin.8.JDK" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "A JRE is not enough, it has to be a JDK (bin\javac.exe must exist)."
+    exit 1
+}
+
+$javaExe = Join-Path $java8 "bin\java.exe"
+if (-not (Test-Path $javaExe)) {
+    Write-Host ""
+    Write-Host "$java8 does not look like a JDK, bin\java.exe is missing" -ForegroundColor Red
     exit 1
 }
 
