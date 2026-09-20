@@ -145,6 +145,25 @@ public final class VersionResolver {
         // score every json by where it sits and pick the best one that actually
         // parses as a version manifest.
         List<File> candidates = new ArrayList<>();
+
+        // versions/ first and always: it is where every launcher keeps its
+        // profiles, and a cache directory full of manifests could otherwise use
+        // up the budget before the walk ever gets there
+        File versions = new File(root, "versions");
+        if (versions.isDirectory()) {
+            File[] children = versions.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (child.isFile() && child.getName().endsWith(".json")) candidates.add(child);
+                    if (!child.isDirectory()) continue;
+                    File[] inner = child.listFiles();
+                    if (inner == null) continue;
+                    for (File file : inner) {
+                        if (file.isFile() && file.getName().endsWith(".json")) candidates.add(file);
+                    }
+                }
+            }
+        }
         collectJson(root, 0, candidates);
 
         File best = null;
@@ -216,7 +235,7 @@ public final class VersionResolver {
     }
 
     private static void collectJson(File directory, int depth, List<File> out) {
-        if (depth > MAX_DEPTH + 1 || out.size() > 400) return;
+        if (depth > MAX_DEPTH + 1 || out.size() > 2000) return;
         File[] children = directory.listFiles();
         if (children == null) return;
 
