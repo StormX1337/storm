@@ -11,8 +11,9 @@ Mojang's or Forge's servers. Expect to iterate.
 ## What you need
 
 * **JDK 8** &mdash; ForgeGradle 2.3 is the last toolchain that handles 1.8.9 and it
-  does not run on anything newer. You already have one if `javac -version` ever
-  printed `1.8.0_...`.
+  does not run on anything newer. `build-bridge.ps1` searches for one and names
+  the install command if there is none. A JRE will not do, `bin\javac.exe` has
+  to be there.
 * **JDK 17+** &mdash; for the rest of Storm, as before. The two live side by side.
 * **Forge 1.8.9** installed in the game you actually play.
 
@@ -29,23 +30,23 @@ failing somewhere inside the first tick.
 
 ```powershell
 cd storm-bridge-1.8.9\workspace
-
-# point this shell at your JDK 8, not your JDK 21
-$env:JAVA_HOME = "C:\Program Files\Java\jdk1.8.0_504"
-
-.\gradlew.bat setupDecompWorkspace    # downloads and deobfuscates, slow the first time
-.\gradlew.bat build
+.\build-bridge.ps1
 ```
 
-The workspace has its own Gradle wrapper pinned to 4.10.3, so it does not
-disturb the main build.
+The script finds the JDK 8 itself, prints every JDK it saw so you can check it
+picked the right one, builds, and copies the jar into `dist\` next to the
+agent. The first run downloads and deobfuscates Minecraft and takes a while.
 
-Result: `storm-bridge-1.8.9\workspace\build\libs\storm-bridge-1.8.9.jar`.
+The workspace has its own Gradle wrapper pinned to 4.10.3, so none of this
+disturbs the main build, and `JAVA_HOME` is only changed inside the script.
 
-## 3. Put it next to the agent
+By hand, if you prefer:
 
 ```powershell
-copy storm-bridge-1.8.9\workspace\build\libs\storm-bridge-1.8.9.jar dist\
+$env:JAVA_HOME = "<your JDK 8, the path the script printed>"
+.\gradlew.bat setupDecompWorkspace
+.\gradlew.bat build
+copy build\libs\storm-bridge-1.8.9.jar ..\..\dist\
 ```
 
 The launcher looks for the bridge beside `storm-agent.jar`. The Play page's
@@ -95,6 +96,9 @@ The usual ones:
 * **`Could not resolve net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT`**
   &mdash; the buildscript repositories are unreachable or jcenter is being slow.
   Try again, then check that `https://maven.minecraftforge.net/` opens.
+* **`JAVA_HOME is set to an invalid directory`** &mdash; you set it by hand to a
+  path that does not exist. Run `build-bridge.ps1` instead, it finds the JDK
+  and prints what it found.
 * **`Unsupported class file major version`** &mdash; Gradle is running on a JDK
   that is too new. `JAVA_HOME` is not pointing at the JDK 8.
 * **`Could not find method compileOnly()`** &mdash; the wrapper did not pin to

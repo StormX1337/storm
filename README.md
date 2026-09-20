@@ -140,9 +140,7 @@ self contained workspace:
 
 ```powershell
 cd storm-bridge-1.8.9\workspace
-$env:JAVA_HOME = "C:\Program Files\Java\jdk1.8.0_504"   # ForgeGradle 2 needs Java 8
-.\gradlew.bat setupDecompWorkspace
-.\gradlew.bat build
+.\build-bridge.ps1          # finds a JDK 8 itself, ForgeGradle 2 needs one
 ```
 
 Full procedure, including installing Forge and what works without the mixins:
