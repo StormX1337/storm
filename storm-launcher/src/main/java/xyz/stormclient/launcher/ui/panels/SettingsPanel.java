@@ -73,6 +73,9 @@ public final class SettingsPanel extends BasePanel {
         middle.add(toggleHolder, BorderLayout.CENTER);
         add(middle, BorderLayout.CENTER);
 
+        StormButton diagnose = new StormButton("Diagnose", StormButton.Style.GHOST, this::onDiagnose);
+        diagnose.setPreferredSize(new Dimension(150, 44));
+
         StormButton browse = new StormButton("Browse", StormButton.Style.GHOST, this::onBrowse);
         browse.setIcon(Icons.Kind.FOLDER);
         browse.setPreferredSize(new Dimension(140, 44));
@@ -86,6 +89,7 @@ public final class SettingsPanel extends BasePanel {
 
         JPanel south = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
         south.setOpaque(false);
+        south.add(diagnose);
         south.add(browse);
         south.add(save);
         add(south, BorderLayout.SOUTH);
@@ -131,6 +135,28 @@ public final class SettingsPanel extends BasePanel {
             holder.add(button);
         }
         return holder;
+    }
+
+    /** Dumps what is in the game directory to the console, for unknown layouts. */
+    private void onDiagnose() {
+        File gameDir = new File(config.gameDirectory());
+        new Thread(() -> {
+            xyz.stormclient.launcher.core.Log.info("=== Storm diagnosis ===");
+            xyz.stormclient.launcher.core.Log.info("launcher Java " + System.getProperty("java.version"));
+            xyz.stormclient.launcher.core.Log.info("game directory " + gameDir);
+            xyz.stormclient.launcher.core.Log.info("agent jar " + config.agentJar()
+                    + " exists=" + new File(config.agentJar()).isFile());
+
+            for (GameDirectories.Install install : GameDirectories.scan(gameDir)) {
+                xyz.stormclient.launcher.core.Log.info("install: " + install);
+            }
+            xyz.stormclient.launcher.core.VersionResolver.diagnose(gameDir, config.version());
+            xyz.stormclient.launcher.core.VersionResolver.dumpTree(gameDir);
+            xyz.stormclient.launcher.core.Log.info("=== end ===");
+        }, "Storm-Diagnose").start();
+
+        saved = "written to the console tab";
+        repaint();
     }
 
     private void onBrowse() {

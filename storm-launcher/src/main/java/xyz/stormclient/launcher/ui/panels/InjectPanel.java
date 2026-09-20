@@ -16,6 +16,7 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -40,6 +41,7 @@ public final class InjectPanel extends BasePanel {
 
     private String status = "";
     private Color statusColor = StormTheme.TEXT_DIM;
+    private JTextField argumentField;
 
     public InjectPanel(LauncherConfig config) {
         super("Inject", "Attach the Storm agent to a running game");
@@ -61,10 +63,16 @@ public final class InjectPanel extends BasePanel {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
-        actions.setPreferredSize(new Dimension(0, 60));
+        actions.setPreferredSize(new Dimension(0, 64));
         actions.add(refreshButton);
         actions.add(injectButton);
-        add(actions, BorderLayout.SOUTH);
+
+        JPanel bottom = new JPanel(new BorderLayout(0, 12));
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
+        bottom.add(jvmArgumentRow(), BorderLayout.CENTER);
+        bottom.add(actions, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
 
         // keep the list fresh while the page is open
         new Timer(4000, e -> { if (isShowing()) refresh(); }).start();
@@ -76,6 +84,7 @@ public final class InjectPanel extends BasePanel {
             SwingUtilities.invokeLater(() -> {
                 list.setProcesses(found);
                 updateButton();
+                if (argumentField != null) argumentField.setText(jvmArgument());
             });
         }, "Storm-Scan").start();
     }
@@ -111,6 +120,64 @@ public final class InjectPanel extends BasePanel {
                 repaint();
             });
         }, "Storm-Inject").start();
+    }
+
+    /**
+     * The way in that always works: the game loads the agent itself at startup,
+     * so no attach provider and no matching Java version are needed.
+     */
+    private JComponent jvmArgumentRow() {
+        JPanel holder = new JPanel(new BorderLayout(10, 0)) {
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = UiKit.prepare((Graphics2D) graphics.create());
+                UiKit.fillRound(g, 0, 20, getWidth(), getHeight() - 20, 11,
+                        StormTheme.alpha(StormTheme.PANEL, 190));
+                UiKit.drawRound(g, 0, 20, getWidth(), getHeight() - 20, 11, 1F,
+                        StormTheme.alpha(StormTheme.OUTLINE, 160));
+                g.setFont(StormTheme.font(12));
+                UiKit.text(g, "Or add this to your launcher's JVM arguments and start the game normally",
+                        2, 12, StormTheme.TEXT_DIM);
+                g.dispose();
+            }
+        };
+        holder.setOpaque(false);
+        holder.setPreferredSize(new Dimension(0, 70));
+        holder.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        argumentField = new JTextField(jvmArgument());
+        argumentField.setEditable(false);
+        argumentField.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 8));
+        argumentField.setOpaque(false);
+        argumentField.setForeground(StormTheme.ACCENT);
+        argumentField.setCaretColor(StormTheme.ACCENT);
+        argumentField.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+
+        StormButton copy = new StormButton("Copy", StormButton.Style.GHOST, () -> {
+            argumentField.selectAll();
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new java.awt.datatransfer.StringSelection(jvmArgument()), null);
+            status = "copied, paste it into your launcher and restart the game";
+            statusColor = StormTheme.GREEN;
+            repaint();
+        });
+        copy.setPreferredSize(new Dimension(110, 40));
+
+        JPanel copyHolder = new JPanel(new BorderLayout());
+        copyHolder.setOpaque(false);
+        copyHolder.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 6));
+        copyHolder.add(copy, BorderLayout.CENTER);
+
+        holder.add(argumentField, BorderLayout.CENTER);
+        holder.add(copyHolder, BorderLayout.EAST);
+        return holder;
+    }
+
+    private String jvmArgument() {
+        MinecraftVersion version = VersionRegistry.byId(config.version());
+        File agent = new File(config.agentJar());
+        File bridge = xyz.stormclient.launcher.core.LauncherPaths.bridgeJar(agent, version.bridgeJarName());
+        return Injector.jvmArgument(agent,
+                Injector.buildOptions(version.id(), config.configProfile(), bridge, config.debug()));
     }
 
     @Override protected void paintBody(Graphics2D g) {

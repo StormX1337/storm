@@ -43,15 +43,35 @@ public final class VersionResolver {
     }
 
     private static final int MAX_DEPTH = 4;
+    private static final long CACHE_MS = 4000;
+
+    private static final Map<String, Object[]> CACHE = new java.util.HashMap<>();
 
     private VersionResolver() { }
 
-    /** @return the resolved paths, or null when no manifest for this version exists. */
-    public static Resolved resolve(File root, String version) {
+    /**
+     * @return the resolved paths, or null when no manifest for this version exists.
+     *         Results are cached briefly, since the UI asks on every repaint.
+     */
+    public static synchronized Resolved resolve(File root, String version) {
         if (root == null || !root.isDirectory()) return null;
 
+        String key = root.getAbsolutePath() + "|" + version;
+        Object[] cached = CACHE.get(key);
+        if (cached != null && System.currentTimeMillis() - (Long) cached[0] < CACHE_MS) {
+            return (Resolved) cached[1];
+        }
+        Resolved resolved = resolveUncached(root, version);
+        CACHE.put(key, new Object[] { System.currentTimeMillis(), resolved });
+        return resolved;
+    }
+
+    public static synchronized void clearCache() { CACHE.clear(); }
+
+    private static Resolved resolveUncached(File root, String version) {
         File manifest = findManifest(root, version);
         if (manifest == null) return null;
+        Log.info("version manifest: " + manifest);
 
         File manifestDir = manifest.getParentFile();
         File libraries = firstDirectory(
@@ -84,6 +104,12 @@ public final class VersionResolver {
     // ------------------------------------------------------------------
     //  manifest
     // ------------------------------------------------------------------
+    /** Directories that only ever hold bulk data, never a version manifest. */
+    private static final java.util.Set<String> SKIP = new java.util.HashSet<>(java.util.Arrays.asList(
+            "assets", "libraries", "mods", "resourcepacks", "saves", "shaderpacks",
+            "screenshots", "logs", "crash-reports", "natives", "cache", "caches",
+            "texturepacks", "server-resource-packs", "webcache"));
+
     private static File findManifest(File root, String version) {
         File[] known = {
                 new File(root, "versions/" + version + "/" + version + ".json"),   // official
@@ -93,23 +119,56 @@ public final class VersionResolver {
                 new File(root, version + "/" + version + ".json")
         };
         for (File candidate : known) {
-            if (isManifest(candidate)) {
-                Log.info("version manifest: " + candidate);
-                return candidate;
-            }
+            if (isManifest(candidate)) return candidate;
         }
 
-        // nothing known matched, go looking
-        List<File> found = new ArrayList<>();
-        search(root, version + ".json", 0, found);
-        for (File candidate : found) {
-            if (isManifest(candidate)) {
-                Log.info("version manifest found by search: " + candidate);
-                return candidate;
+        // Nothing known matched. Launchers name the file whatever they like, so
+        // score every json by where it sits and pick the best one that actually
+        // parses as a version manifest.
+        List<File> candidates = new ArrayList<>();
+        collectJson(root, 0, candidates);
+
+        File best = null;
+        int bestScore = Integer.MIN_VALUE;
+        for (File candidate : candidates) {
+            int score = score(candidate, version);
+            if (score <= bestScore) continue;
+            if (!isManifest(candidate)) continue;
+            best = candidate;
+            bestScore = score;
+        }
+        return best;
+    }
+
+    private static int score(File file, String version) {
+        String name = file.getName().toLowerCase();
+        String path = file.getAbsolutePath().toLowerCase().replace('\\', '/');
+        String id = version.toLowerCase();
+
+        int score = 0;
+        if (name.equals(id + ".json")) score += 6;
+        if (name.contains(id)) score += 3;
+        if (path.contains("/" + id + "/")) score += 4;
+        if (path.contains("/versions/")) score += 2;
+        if (name.equals("version.json") || name.equals("client.json")) score += 2;
+        if (name.contains("profile") || name.contains("launcher") || name.contains("index")) score -= 4;
+        return score;
+    }
+
+    private static void collectJson(File directory, int depth, List<File> out) {
+        if (depth > MAX_DEPTH + 1 || out.size() > 400) return;
+        File[] children = directory.listFiles();
+        if (children == null) return;
+
+        for (File child : children) {
+            if (child.isFile()) {
+                if (child.getName().toLowerCase().endsWith(".json")) out.add(child);
+            } else if (child.isDirectory()) {
+                String name = child.getName().toLowerCase();
+                if (name.startsWith(".") || SKIP.contains(name)) continue;
+                collectJson(child, depth + 1, out);
             }
         }
-        Log.warn("no manifest for " + version + " under " + root);
-        return null;
     }
 
     /** A manifest is a json file that names a main class or carries libraries. */
@@ -176,14 +235,53 @@ public final class VersionResolver {
         return "custom";
     }
 
+    /** Prints the directory structure so an unknown layout can be identified. */
+    public static void dumpTree(File root) {
+        Log.info("--- directory tree of " + root + " ---");
+        if (root == null || !root.isDirectory()) {
+            Log.warn("not a directory");
+            return;
+        }
+        dumpTree(root, "", 0, new int[] { 0 });
+        Log.info("--- end of tree ---");
+    }
+
+    private static void dumpTree(File directory, String indent, int depth, int[] printed) {
+        if (depth > 3 || printed[0] > 160) return;
+        File[] children = directory.listFiles();
+        if (children == null) return;
+
+        java.util.Arrays.sort(children);
+        int shown = 0;
+        for (File child : children) {
+            if (printed[0] > 160) return;
+            if (shown++ > 24) {
+                Log.info(indent + "  ... " + (children.length - shown) + " more");
+                return;
+            }
+            printed[0]++;
+
+            if (child.isDirectory()) {
+                String name = child.getName().toLowerCase();
+                boolean skipped = SKIP.contains(name);
+                Log.info(indent + "[" + child.getName() + "]" + (skipped ? "  (skipped)" : ""));
+                if (!skipped) dumpTree(child, indent + "  ", depth + 1, printed);
+            } else {
+                Log.info(indent + child.getName() + "  " + (child.length() / 1024) + " kB");
+            }
+        }
+    }
+
     /** Writes everything it found to the log, for when a launch still fails. */
     public static void diagnose(File root, String version) {
         Log.info("--- version lookup ---");
         Log.info("root    " + root);
+        clearCache();
         Resolved resolved = resolve(root, version);
         if (resolved == null) {
             Log.warn(version + " not found under " + root);
             Log.info("versions present: " + String.join(", ", GameDirectories.installedIn(root)));
+            dumpTree(root);
             return;
         }
         Log.info("layout    " + resolved.layout);
