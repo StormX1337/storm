@@ -71,7 +71,7 @@ public final class VersionResolver {
     private static Resolved resolveUncached(File root, String version) {
         File manifest = findManifest(root, version);
         if (manifest == null) return null;
-        Log.info("version manifest: " + manifest);
+        Log.info("version manifest for " + version + ": " + manifest);
 
         File manifestDir = manifest.getParentFile();
         File libraries = firstDirectory(
@@ -119,7 +119,7 @@ public final class VersionResolver {
                 new File(root, version + "/" + version + ".json")
         };
         for (File candidate : known) {
-            if (isManifest(candidate)) return candidate;
+            if (isManifest(candidate, version)) return candidate;
         }
 
         // Nothing known matched. Launchers name the file whatever they like, so
@@ -130,14 +130,38 @@ public final class VersionResolver {
 
         File best = null;
         int bestScore = Integer.MIN_VALUE;
+        java.util.Set<String> otherVersions = new java.util.LinkedHashSet<>();
+
         for (File candidate : candidates) {
             int score = score(candidate, version);
-            if (score <= bestScore) continue;
-            if (!isManifest(candidate)) continue;
-            best = candidate;
-            bestScore = score;
+            if (score > bestScore && isManifest(candidate, version)) {
+                best = candidate;
+                bestScore = score;
+                continue;
+            }
+            String id = versionIdOf(candidate);
+            if (id != null && !id.equalsIgnoreCase(version)) otherVersions.add(id);
+        }
+
+        if (best == null && !otherVersions.isEmpty()) {
+            Log.warn("no manifest for " + version + ", but found manifests for: "
+                    + String.join(", ", otherVersions));
         }
         return best;
+    }
+
+    /** The version a manifest belongs to, or null when it is not a manifest. */
+    private static String versionIdOf(File file) {
+        if (file == null || !file.isFile() || file.length() > 4L * 1024 * 1024) return null;
+        try {
+            Map<String, Object> json = Json.readObject(
+                    new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+            if (!json.containsKey("mainClass") && !json.containsKey("libraries")) return null;
+            Object id = json.get("id");
+            return id == null ? null : String.valueOf(id);
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     private static int score(File file, String version) {
@@ -171,14 +195,33 @@ public final class VersionResolver {
         }
     }
 
-    /** A manifest is a json file that names a main class or carries libraries. */
-    private static boolean isManifest(File file) {
+    /**
+     * A manifest is a json file that names a main class or carries libraries and
+     * that belongs to the version being asked for.
+     *
+     * <p>The version check is the important half. Launchers cache manifests
+     * under a content hash, so the file name says nothing, and picking the
+     * wrong one builds a classpath for a different Minecraft entirely.
+     */
+    private static boolean isManifest(File file, String version) {
         if (file == null || !file.isFile() || file.length() > 4L * 1024 * 1024) return false;
         try {
             Map<String, Object> json = Json.readObject(
                     new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
-            return json.containsKey("mainClass") || json.containsKey("libraries")
+
+            boolean shaped = json.containsKey("mainClass") || json.containsKey("libraries")
                     || json.containsKey("inheritsFrom");
+            if (!shaped) return false;
+
+            Object id = json.get("id");
+            Object inherits = json.get("inheritsFrom");
+
+            if (id != null && String.valueOf(id).equalsIgnoreCase(version)) return true;
+            if (inherits != null && String.valueOf(inherits).equalsIgnoreCase(version)) return true;
+
+            // a manifest that names a different version is the wrong one, not a
+            // weaker match, so it never wins on score
+            return id == null && inherits == null;
         } catch (IOException | RuntimeException e) {
             return false;
         }
