@@ -93,7 +93,8 @@ public final class SettingsPanel extends BasePanel {
 
     /** One clickable row per launcher Storm found on this machine. */
     private JComponent installations() {
-        List<GameDirectories.Install> installs = GameDirectories.scan();
+        List<GameDirectories.Install> installs =
+                GameDirectories.scan(new File(config.gameDirectory()));
 
         JPanel holder = new JPanel(new GridLayout(1, Math.max(1, Math.min(3, installs.size())), 10, 10)) {
             @Override protected void paintComponent(Graphics graphics) {

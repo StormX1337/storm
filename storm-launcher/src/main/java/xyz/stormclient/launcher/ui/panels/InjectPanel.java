@@ -94,7 +94,7 @@ public final class InjectPanel extends BasePanel {
                 target.detectedVersion().isEmpty() ? config.version() : target.detectedVersion());
 
         File agent = new File(config.agentJar());
-        File bridge = new File(agent.getParentFile(), version.bridgeJarName());
+        File bridge = xyz.stormclient.launcher.core.LauncherPaths.bridgeJar(agent, version.bridgeJarName());
         String options = Injector.buildOptions(version.id(), config.configProfile(), bridge, config.debug());
 
         injectButton.setEnabledState(false);

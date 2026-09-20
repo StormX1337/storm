@@ -54,17 +54,26 @@ public final class StatusCard extends JComponent {
         MinecraftVersion version = VersionRegistry.byId(config.version());
         File gameDir = new File(config.gameDirectory());
         File agent = new File(config.agentJar());
-        File bridge = new File(agent.getParentFile(), version.bridgeJarName());
+        File bridge = xyz.stormclient.launcher.core.LauncherPaths.bridgeJar(agent, version.bridgeJarName());
 
         rows = new ArrayList<>();
 
-        boolean installedHere = GameDirectories.canLaunchFrom(gameDir, version.id());
-        String elsewhere = GameDirectories.describeAlternatives(version.id());
-        rows.add(new Row("Game files",
-                installedHere ? "found in " + gameDir.getName()
-                              : elsewhere.isEmpty() ? "not installed anywhere Storm can see"
-                                                    : "in " + elsewhere + ", not in " + gameDir.getName(),
-                installedHere ? StormTheme.GREEN : StormTheme.AMBER, installedHere));
+        boolean presentHere = GameDirectories.installedIn(gameDir).contains(version.id());
+        boolean launchable = GameDirectories.canLaunchFrom(gameDir, version.id());
+        String elsewhere = GameDirectories.describeAlternatives(version.id(), gameDir);
+
+        String detail;
+        if (launchable) {
+            detail = "found in " + gameDir.getName();
+        } else if (presentHere) {
+            detail = "in " + gameDir.getName() + ", but not startable from here \u2013 use Inject";
+        } else if (!elsewhere.isEmpty()) {
+            detail = "in " + elsewhere + ", not in " + gameDir.getName();
+        } else {
+            detail = "not installed anywhere Storm can see";
+        }
+        rows.add(new Row("Game files", detail,
+                launchable ? StormTheme.GREEN : StormTheme.AMBER, launchable));
 
         boolean hasBridge = bridge.isFile();
         rows.add(new Row("Bridge for " + version.id(),
@@ -78,12 +87,12 @@ public final class StatusCard extends JComponent {
 
         if (!hasBridge) {
             headline = "The game will start, but Storm will not load yet";
-        } else if (!installedHere && !elsewhere.isEmpty()) {
-            headline = "Start " + version.id() + " in " + elsewhere + ", then use Inject";
-        } else if (!installedHere) {
-            headline = "Install " + version.id() + " first";
-        } else {
+        } else if (launchable) {
             headline = "Ready: Launch starts " + version.id() + " with Storm attached";
+        } else if (presentHere || !elsewhere.isEmpty()) {
+            headline = "Start " + version.id() + " in your own launcher, then use Inject";
+        } else {
+            headline = "Install " + version.id() + " first";
         }
         repaint();
     }

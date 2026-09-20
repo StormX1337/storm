@@ -43,20 +43,21 @@ public final class GameLauncher {
     /** @return the started process, or null when something was missing. */
     @SuppressWarnings("unchecked")
     public static Process launch(Options options, Consumer<String> output) throws Exception {
-        File versionDir = new File(options.gameDir, "versions/" + options.version);
-        File manifest = new File(versionDir, options.version + ".json");
-        if (!manifest.isFile()) {
-            throw new IllegalStateException(describeMissing(options));
+        VersionResolver.Resolved resolved = VersionResolver.resolve(options.gameDir, options.version);
+        if (resolved == null || !resolved.complete()) {
+            VersionResolver.diagnose(options.gameDir, options.version);
+            throw new IllegalStateException(describeMissing(options, resolved));
         }
+        Log.info("using the " + resolved.layout + " layout in " + options.gameDir.getName());
 
         Map<String, Object> json = Json.readObject(
-                new String(Files.readAllBytes(manifest.toPath()), StandardCharsets.UTF_8));
+                new String(Files.readAllBytes(resolved.manifest.toPath()), StandardCharsets.UTF_8));
 
         String mainClass = String.valueOf(json.getOrDefault("mainClass", "net.minecraft.client.main.Main"));
         String assetIndex = assetIndex(json);
 
-        List<String> classpath = classpath(options.gameDir, json, versionDir, options.version);
-        File natives = natives(versionDir, options.version);
+        List<String> classpath = classpath(resolved, json);
+        File natives = resolved.natives;
 
         List<String> command = new ArrayList<>();
         command.add(options.javaPath.getPath());
@@ -77,7 +78,7 @@ public final class GameLauncher {
         command.add(String.join(File.pathSeparator, classpath));
         command.add(mainClass);
 
-        command.addAll(gameArguments(json, options, assetIndex));
+        command.addAll(gameArguments(json, options, assetIndex, resolved));
 
         Log.info("launching " + options.version + " with " + classpath.size() + " libraries");
         Log.info("command: " + options.javaPath.getName() + " ... " + mainClass);
@@ -96,7 +97,12 @@ public final class GameLauncher {
      * files somewhere else, so say where it actually is instead of assuming
      * the user never installed it.
      */
-    private static String describeMissing(Options options) {
+    private static String describeMissing(Options options, VersionResolver.Resolved resolved) {
+        if (resolved != null) {
+            return options.version + " was found in " + options.gameDir.getName()
+                    + " but its libraries are missing. Run it once in your own launcher,"
+                    + " or use Inject instead. The console has the details.";
+        }
         java.util.Set<String> here = GameDirectories.installedIn(options.gameDir);
         String elsewhere = GameDirectories.describeAlternatives(options.version);
 
@@ -132,9 +138,9 @@ public final class GameLauncher {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<String> classpath(File gameDir, Map<String, Object> json, File versionDir, String version) {
+    private static List<String> classpath(VersionResolver.Resolved resolved, Map<String, Object> json) {
         List<String> out = new ArrayList<>();
-        File libraries = new File(gameDir, "libraries");
+        File libraries = resolved.libraries;
 
         Object rawLibraries = json.get("libraries");
         if (rawLibraries instanceof List) {
@@ -149,8 +155,11 @@ public final class GameLauncher {
                 if (jar.isFile()) out.add(jar.getAbsolutePath());
             }
         }
-        File client = new File(versionDir, version + ".jar");
-        if (client.isFile()) out.add(client.getAbsolutePath());
+        if (resolved.clientJar != null && resolved.clientJar.isFile()) {
+            out.add(resolved.clientJar.getAbsolutePath());
+        } else {
+            Log.warn("no client jar found, the game will very likely not start");
+        }
         return out;
     }
 
@@ -165,13 +174,6 @@ public final class GameLauncher {
         return group + "/" + artifact + "/" + version + "/" + artifact + "-" + version + classifier + ".jar";
     }
 
-    private static File natives(File versionDir, String version) {
-        File natives = new File(versionDir, version + "-natives");
-        if (natives.isDirectory()) return natives;
-        File legacy = new File(versionDir, "natives");
-        return legacy.isDirectory() ? legacy : natives;
-    }
-
     @SuppressWarnings("unchecked")
     private static String assetIndex(Map<String, Object> json) {
         Object index = json.get("assetIndex");
@@ -183,13 +185,14 @@ public final class GameLauncher {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<String> gameArguments(Map<String, Object> json, Options options, String assetIndex) {
+    private static List<String> gameArguments(Map<String, Object> json, Options options,
+                                              String assetIndex, VersionResolver.Resolved resolved) {
         Map<String, String> tokens = new LinkedHashMap<>();
         tokens.put("auth_player_name", options.username);
         tokens.put("version_name", options.version);
         tokens.put("game_directory", options.gameDir.getAbsolutePath());
-        tokens.put("assets_root", new File(options.gameDir, "assets").getAbsolutePath());
-        tokens.put("game_assets", new File(options.gameDir, "assets/virtual/legacy").getAbsolutePath());
+        tokens.put("assets_root", resolved.assets.getAbsolutePath());
+        tokens.put("game_assets", new File(resolved.assets, "virtual/legacy").getAbsolutePath());
         tokens.put("assets_index_name", assetIndex);
         tokens.put("auth_uuid", UUID.nameUUIDFromBytes(("OfflinePlayer:" + options.username)
                 .getBytes(StandardCharsets.UTF_8)).toString().replace("-", ""));

@@ -68,7 +68,7 @@ public final class LauncherConfig {
     }
     public void setGameDirectory(String v) { set("gameDir", v); }
 
-    public String agentJar()           { return get("agent", new File("storm-agent.jar").getAbsolutePath()); }
+    public String agentJar()           { return get("agent", LauncherPaths.defaultAgentJar().getAbsolutePath()); }
     public void setAgentJar(String v)  { set("agent", v); }
 
     public String configProfile()          { return get("profile", "default"); }

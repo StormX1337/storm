@@ -80,10 +80,29 @@ public final class GameDirectories {
 
     /** Every installation that actually holds at least one version. */
     public static List<Install> scan() {
+        return scan(null);
+    }
+
+    /**
+     * The known installations plus the one the user configured, which is the
+     * only way a launcher nobody has heard of shows up in the list.
+     */
+    public static List<Install> scan(File extraRoot) {
         List<Install> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        if (extraRoot != null && extraRoot.isDirectory()) {
+            Install install = inspect(extraRoot.getName(), extraRoot);
+            if (install != null && !install.versions.isEmpty()) {
+                out.add(install);
+                seen.add(extraRoot.getAbsolutePath());
+            }
+        }
         for (Map.Entry<String, File> entry : roots().entrySet()) {
             Install install = inspect(entry.getKey(), entry.getValue());
-            if (install != null && !install.versions.isEmpty()) out.add(install);
+            if (install == null || install.versions.isEmpty()) continue;
+            if (!seen.add(install.root.getAbsolutePath())) continue;
+            out.add(install);
         }
         return out;
     }
@@ -157,15 +176,20 @@ public final class GameDirectories {
         return install == null ? new LinkedHashSet<String>() : install.versions;
     }
 
-    /** True when this directory can be started directly by {@link GameLauncher}. */
+    /** True when {@link GameLauncher} has everything it needs in this directory. */
     public static boolean canLaunchFrom(File root, String version) {
-        return new File(root, "versions/" + version + "/" + version + ".json").isFile();
+        VersionResolver.Resolved resolved = VersionResolver.resolve(root, version);
+        return resolved != null && resolved.complete();
     }
 
     /** Human readable summary for the error message when a version is missing. */
     public static String describeAlternatives(String version) {
+        return describeAlternatives(version, null);
+    }
+
+    public static String describeAlternatives(String version, File extraRoot) {
         StringBuilder sb = new StringBuilder();
-        for (Install install : scan()) {
+        for (Install install : scan(extraRoot)) {
             if (!install.has(version)) continue;
             if (sb.length() > 0) sb.append(", ");
             sb.append(install.launcher);

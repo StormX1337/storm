@@ -85,6 +85,11 @@ public final class HomePanel extends BasePanel {
         grid.setInstalled(installed);
         if (statusCard != null) statusCard.refresh();
 
+        // only the official launcher has a profiles file to add to
+        File profiles = new File(gameDir, "launcher_profiles.json");
+        profile.setEnabledState(profiles.isFile());
+        profile.setSubLabel(profiles.isFile() ? "" : "official launcher only");
+
         boolean launchable = GameDirectories.canLaunchFrom(gameDir, version.id());
         launch.setEnabledState(version.playable() && launchable);
         launch.setSubLabel(version.id() + "  ·  " + config.username());
@@ -112,7 +117,7 @@ public final class HomePanel extends BasePanel {
         options.gameDir = new File(config.gameDirectory());
         options.javaPath = new File(config.javaPath());
         options.agentJar = new File(config.agentJar());
-        options.bridgeJar = new File(options.agentJar.getParentFile(), version.bridgeJarName());
+        options.bridgeJar = xyz.stormclient.launcher.core.LauncherPaths.bridgeJar(options.agentJar, version.bridgeJarName());
         options.ram = config.ram();
         options.debug = config.debug();
         options.agentOptions = Injector.buildOptions(version.id(), config.configProfile(),
@@ -147,7 +152,7 @@ public final class HomePanel extends BasePanel {
     private void onInstallProfile() {
         MinecraftVersion version = VersionRegistry.byId(config.version());
         File agent = new File(config.agentJar());
-        File bridge = new File(agent.getParentFile(), version.bridgeJarName());
+        File bridge = xyz.stormclient.launcher.core.LauncherPaths.bridgeJar(agent, version.bridgeJarName());
         String options = Injector.buildOptions(version.id(), config.configProfile(), bridge, config.debug());
 
         boolean ok = ProfileInstaller.install(new File(config.gameDirectory()), version.id(), agent, options);

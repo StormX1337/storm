@@ -22,7 +22,9 @@ public final class ProfileInstaller {
     public static boolean install(File gameDirectory, String version, File agentJar, String agentOptions) {
         File file = new File(gameDirectory, "launcher_profiles.json");
         if (!file.isFile()) {
-            Log.warn("launcher_profiles.json not found in " + gameDirectory);
+            Log.warn("launcher_profiles.json not found in " + gameDirectory
+                    + " - that file only exists in the official launcher, so there is no"
+                    + " profile to add to here");
             return false;
         }
 
