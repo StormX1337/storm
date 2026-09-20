@@ -56,8 +56,13 @@ public final class GameLauncher {
         String mainClass = String.valueOf(json.getOrDefault("mainClass", "net.minecraft.client.main.Main"));
         String assetIndex = assetIndex(json);
 
-        List<String> classpath = classpath(resolved, json);
-        File natives = resolved.natives;
+        List<File> libraryRoots = LibraryIndex.roots(options.gameDir,
+                resolved.manifest.getParentFile(), resolved.libraries);
+        LibraryIndex index = LibraryIndex.build(libraryRoots);
+
+        List<String> classpath = classpath(resolved, json, index);
+        File natives = NativesExtractor.prepare(json, index, resolved.natives,
+                options.gameDir, options.version);
 
         List<String> command = new ArrayList<>();
         command.add(options.javaPath.getPath());
@@ -80,7 +85,7 @@ public final class GameLauncher {
 
         command.addAll(gameArguments(json, options, assetIndex, resolved));
 
-        Log.info("launching " + options.version + " with " + classpath.size() + " libraries");
+        Log.info("launching " + options.version + " with " + classpath.size() + " classpath entries");
         Log.info("command: " + options.javaPath.getName() + " ... " + mainClass);
 
         ProcessBuilder builder = new ProcessBuilder(command);
@@ -138,23 +143,31 @@ public final class GameLauncher {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<String> classpath(VersionResolver.Resolved resolved, Map<String, Object> json) {
+    private static List<String> classpath(VersionResolver.Resolved resolved, Map<String, Object> json,
+                                          LibraryIndex index) {
         List<String> out = new ArrayList<>();
-        File libraries = resolved.libraries;
-
+        List<String> missing = new ArrayList<>();
         Object rawLibraries = json.get("libraries");
+
         if (rawLibraries instanceof List) {
             for (Object entry : (List<Object>) rawLibraries) {
                 if (!(entry instanceof Map)) continue;
                 Map<String, Object> library = (Map<String, Object>) entry;
-                Object name = library.get("name");
-                if (name == null) continue;
-                if (library.containsKey("natives")) continue;          // extracted separately
 
-                File jar = new File(libraries, mavenToPath(String.valueOf(name)));
-                if (jar.isFile()) out.add(jar.getAbsolutePath());
+                String path = artifactPath(library);
+                if (path == null) continue;
+
+                File jar = index.find(path);
+                if (jar != null) out.add(jar.getAbsolutePath());
+                else missing.add(path);
             }
         }
+
+        if (!missing.isEmpty()) {
+            Log.warn(missing.size() + " libraries could not be found, for example:");
+            for (int i = 0; i < Math.min(5, missing.size()); i++) Log.warn("  " + missing.get(i));
+        }
+
         if (resolved.clientJar != null && resolved.clientJar.isFile()) {
             out.add(resolved.clientJar.getAbsolutePath());
         } else {
@@ -163,8 +176,34 @@ public final class GameLauncher {
         return out;
     }
 
+    /**
+     * The manifest gives the path twice: once as a maven name and once, on
+     * modern manifests, as an explicit download path. The explicit one wins
+     * because it already carries the classifier.
+     */
+    @SuppressWarnings("unchecked")
+    private static String artifactPath(Map<String, Object> library) {
+        Object downloads = library.get("downloads");
+        if (downloads instanceof Map) {
+            Object artifact = ((Map<String, Object>) downloads).get("artifact");
+            if (artifact instanceof Map) {
+                Object path = ((Map<String, Object>) artifact).get("path");
+                if (path != null) return String.valueOf(path);
+            }
+            // natives are extracted by the launcher, not put on the class path
+            if (((Map<String, Object>) downloads).containsKey("classifiers")
+                    && !((Map<String, Object>) downloads).containsKey("artifact")) {
+                return null;
+            }
+        }
+        if (library.containsKey("natives")) return null;
+
+        Object name = library.get("name");
+        return name == null ? null : mavenToPath(String.valueOf(name));
+    }
+
     /** {@code group:artifact:version} -> {@code group/path/artifact/version/artifact-version.jar} */
-    static String mavenToPath(String name) {
+    public static String mavenToPath(String name) {
         String[] parts = name.split(":");
         if (parts.length < 3) return name;
         String group = parts[0].replace('.', '/');
