@@ -1,0 +1,17 @@
+dependencies {
+    implementation project(':storm-core')
+}
+
+jar {
+    archiveBaseName = 'storm-agent'
+    manifest {
+        attributes(
+            'Premain-Class'         : 'xyz.stormclient.agent.StormAgent',
+            'Agent-Class'           : 'xyz.stormclient.agent.StormAgent',
+            'Can-Retransform-Classes': 'true',
+            'Can-Redefine-Classes'  : 'true'
+        )
+    }
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

@@ -1,0 +1,49 @@
+// ============================================================
+//  STORM CLIENT - root build script
+// ============================================================
+//  storm-core      : pure Java 8, zero Minecraft imports  (always compiles)
+//  storm-agent     : JVM agent used by the injection menu  (pure Java 8)
+//  storm-launcher  : modern Swing launcher / injector      (Java 17)
+//  storm-bridge-*  : per-version Minecraft bridges         (needs MC deps)
+// ============================================================
+
+subprojects {
+    apply plugin: 'java'
+
+    group = 'xyz.stormclient'
+    version = project.findProperty('storm.version') ?: '1.0.0'
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spongepowered.org/repository/maven-public/' }
+        maven { url 'https://maven.minecraftforge.net/' }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+}
+
+// Everything that has to load inside a 1.8.9 JVM stays on Java 8 bytecode.
+configure([project(':storm-core'), project(':storm-agent')]) {
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    tasks.withType(JavaCompile).configureEach {
+        if (JavaVersion.current().isJava9Compatible()) options.release = 8
+    }
+}
+
+configure(project(':storm-launcher')) {
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+tasks.register('stormInfo') {
+    doLast {
+        println "Storm Client ${project.findProperty('storm.version')} - xyz.stormclient"
+    }
+}

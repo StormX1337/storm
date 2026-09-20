@@ -1,0 +1,9 @@
+// storm-core : the whole client brain. No Minecraft import anywhere in here.
+// Everything talks to the game through xyz.stormclient.bridge.* interfaces,
+// which is what makes a single build run on every supported version.
+dependencies { }
+
+jar {
+    archiveBaseName = 'storm-core'
+    manifest { attributes 'Storm-Version': project.version, 'Storm-Module': 'core' }
+}

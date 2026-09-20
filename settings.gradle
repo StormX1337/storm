@@ -1,0 +1,6 @@
+rootProject.name = 'storm-client'
+
+include 'storm-core'
+include 'storm-agent'
+include 'storm-launcher'
+include 'storm-bridge-1.8.9'

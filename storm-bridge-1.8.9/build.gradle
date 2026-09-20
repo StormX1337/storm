@@ -1,0 +1,24 @@
+// ============================================================
+//  Minecraft 1.8.9 bridge.
+//  This is the ONLY module that imports net.minecraft.*.
+//  It needs a ForgeGradle / MCP workspace to resolve, so it is
+//  excluded from the plain `gradle build` of the other modules.
+//  Enable it with:   ./gradlew -Pstorm.mc=true build
+// ============================================================
+if (!project.hasProperty('storm.mc')) {
+    // no MC workspace available -> keep the module inert but present
+    tasks.configureEach { t -> if (t.name in ['compileJava', 'jar', 'classes']) t.enabled = false }
+}
+
+dependencies {
+    implementation project(':storm-core')
+    // supplied by ForgeGradle when the workspace is set up:
+    // minecraft 'net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9'
+    compileOnly files('libs/minecraft-1.8.9-mcp.jar')
+    compileOnly 'org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
