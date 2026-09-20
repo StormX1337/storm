@@ -134,15 +134,19 @@ and `test` also runs the smoke test.
 ./gradlew :storm-core:smokeTest
 ```
 
-The 1.8.9 bridge is skipped unless a Minecraft workspace is present, because it
-needs deobfuscated game classes:
+The 1.8.9 bridge is not part of either build, because it needs deobfuscated
+game classes and a toolchain old enough to produce them. It has its own
+self contained workspace:
 
-```bash
-./gradlew -Pstorm.mc=true :storm-bridge-1.8.9:build
+```powershell
+cd storm-bridge-1.8.9\workspace
+$env:JAVA_HOME = "C:\Program Files\Java\jdk1.8.0_504"   # ForgeGradle 2 needs Java 8
+.\gradlew.bat setupDecompWorkspace
+.\gradlew.bat build
 ```
 
-Set that workspace up with ForgeGradle (`1.8.9-11.15.1.2318`) or drop a
-deobfuscated jar into `storm-bridge-1.8.9/libs/`.
+Full procedure, including installing Forge and what works without the mixins:
+[docs/BRIDGE-BUILD.md](docs/BRIDGE-BUILD.md).
 
 ## Running
 
@@ -186,6 +190,7 @@ Adding one is described in [docs/BRIDGE.md](docs/BRIDGE.md).
 
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) &mdash; how the pieces fit together
 * [docs/BRIDGE.md](docs/BRIDGE.md) &mdash; writing a bridge for another version
+* [docs/BRIDGE-BUILD.md](docs/BRIDGE-BUILD.md) &mdash; building the 1.8.9 bridge
 
 ## Troubleshooting
 

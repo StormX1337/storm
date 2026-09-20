@@ -1,0 +1,89 @@
+// ============================================================
+//  Build for the Minecraft 1.8.9 bridge.
+//
+//  Self contained on purpose. ForgeGradle 2.3 is the last thing
+//  that deobfuscates 1.8.9, it needs Gradle 4 and Java 8, and
+//  neither of those can build the rest of Storm. So this folder
+//  has its own wrapper and is never part of the root build.
+//
+//  Run it with a JDK 8:
+//      set JAVA_HOME=C:\Program Files\Java\jdk1.8.0_504
+//      .\gradlew.bat setupDecompWorkspace
+//      .\gradlew.bat build
+//
+//  The result is build\libs\storm-bridge-1.8.9.jar, which goes
+//  next to storm-agent.jar in dist\.
+// ============================================================
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+
+group = 'xyz.stormclient'
+version = '1.0.0'
+archivesBaseName = 'storm-bridge-1.8.9'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+minecraft {
+    version = '1.8.9-11.15.1.2318-1.8.9'
+    mappings = 'stable_22'
+    runDir = 'run'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['../src/main/java']
+            // The mixins need the Mixin toolchain on top of ForgeGradle. Without
+            // them the Forge event hooks still cover ticks, rendering, packets,
+            // chat and input; see BRIDGE-BUILD.md for what stays inactive.
+            exclude '**/mixin/**'
+        }
+        resources {
+            srcDirs = ['../src/main/resources']
+            exclude 'mixins.storm.json'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // storm-core, already inside the agent jar the main build produces
+    compileOnly files('../../dist/storm-agent.jar')
+}
+
+jar {
+    archiveName = 'storm-bridge-1.8.9.jar'
+    manifest {
+        attributes 'Storm-Bridge': '1.8.9', 'Storm-Version': version
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': '1.8.9'
+    }
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+    duplicatesStrategy = 'exclude'
+}
+
+// The bridge jar carries only bridge classes. Everything else comes from the
+// agent jar at runtime, so nothing is on the class path twice.

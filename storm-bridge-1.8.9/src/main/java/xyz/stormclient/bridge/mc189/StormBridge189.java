@@ -28,6 +28,13 @@ public final class StormBridge189 {
         }
         installed = true;
 
+        if (!forgePresent()) {
+            StormLogger.error("this bridge needs Forge 1.8.9, and this game is running without it.");
+            StormLogger.error("install Forge 1.8.9 and start that profile, see docs/BRIDGE-BUILD.md");
+            installed = false;
+            return;
+        }
+
         Minecraft mc = Minecraft.getMinecraft();
         if (mc == null) {
             StormLogger.error("Minecraft has not been created yet, install the bridge later in the boot");
@@ -43,6 +50,21 @@ public final class StormBridge189 {
 
         Runtime.getRuntime().addShutdownHook(new Thread(StormBoot::shutdown, "Storm-Shutdown"));
         StormLogger.info("1.8.9 bridge installed");
+    }
+
+    /**
+     * The event hooks are Forge events, so a vanilla game would only fail later
+     * with a NoClassDefFoundError deep inside the first tick. Checking up front
+     * turns that into one readable line.
+     */
+    private static boolean forgePresent() {
+        try {
+            Class.forName("net.minecraftforge.common.MinecraftForge", false,
+                    StormBridge189.class.getClassLoader());
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     public static boolean installed() { return installed; }
