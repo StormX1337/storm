@@ -16,6 +16,7 @@ dependencies {
     // minecraft 'net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9'
     compileOnly files('libs/minecraft-1.8.9-mcp.jar')
     compileOnly 'org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209'
+    compileOnly 'org.spongepowered:mixin:0.7.11-SNAPSHOT'
 }
 
 java {

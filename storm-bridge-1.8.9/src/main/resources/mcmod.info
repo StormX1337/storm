@@ -1,0 +1,13 @@
+[
+  {
+    "modid": "storm",
+    "name": "Storm Client",
+    "description": "Storm Client - own build, own interface, own assets. Nothing in here comes from another client.",
+    "version": "1.0.0",
+    "mcversion": "1.8.9",
+    "url": "https://stormclient.xyz",
+    "authorList": ["Storm Development"],
+    "credits": "Written from scratch.",
+    "logoFile": "assets/storm/logo.png"
+  }
+]

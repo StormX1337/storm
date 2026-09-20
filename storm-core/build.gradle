@@ -7,3 +7,15 @@ jar {
     archiveBaseName = 'storm-core'
     manifest { attributes 'Storm-Version': project.version, 'Storm-Module': 'core' }
 }
+
+// The headless smoke test boots the client against a fake game and drives it
+// for a few hundred ticks. No test framework needed, it is a plain main().
+tasks.register('smokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Boots Storm against a headless fake Minecraft and checks it works'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'xyz.stormclient.test.StormSmokeTest'
+}
+
+tasks.named('check') { dependsOn 'smokeTest' }

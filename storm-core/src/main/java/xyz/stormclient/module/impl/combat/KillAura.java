@@ -92,11 +92,17 @@ public class KillAura extends Module {
         return f;
     }
 
+    /** Target selection runs on the tick so it does not depend on the motion hook. */
+    @Subscribe
+    public void onTickPre(TickEvent.Pre event) {
+        if (nullCheck()) { target = null; return; }
+        updateTargets();
+    }
+
     @Subscribe(priority = Priority.HIGH)
     public void onMotion(MotionEvent event) {
         if (nullCheck() || !event.isPre()) return;
 
-        updateTargets();
         if (target == null) {
             Storm.get().rotations().clear();
             return;

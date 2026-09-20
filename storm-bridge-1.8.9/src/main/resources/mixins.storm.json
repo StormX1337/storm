@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "xyz.stormclient.bridge.mc189.mixin",
+  "refmap": "mixins.storm.refmap.json",
+  "target": "@env(DEFAULT)",
+  "minVersion": "0.7",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "MixinEntityPlayerSP",
+    "MixinEntityRenderer"
+  ]
+}

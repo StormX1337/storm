@@ -83,11 +83,13 @@ public final class TargetSelector {
         };
     }
 
+    /** Angular distance between the current view and the rotation that would hit the target. */
     public static float angleTo(IEntity target) {
         IPlayer self = Bridge.mc().player();
         if (self == null) return 180F;
         Rotation needed = RotationUtil.toEntity(target, 0.5, 0);
-        return Math.abs(MathUtil.angleDiff(self.yaw(), needed.yaw))
-             + Math.abs(needed.pitch - self.pitch()) * 0.5F;
+        float yaw = Math.abs(MathUtil.angleDiff(self.yaw(), needed.yaw));
+        float pitch = Math.abs(needed.pitch - self.pitch());
+        return Math.max(yaw, pitch);
     }
 }
