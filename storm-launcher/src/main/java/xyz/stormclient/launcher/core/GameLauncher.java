@@ -66,8 +66,10 @@ public final class GameLauncher {
         File natives = NativesExtractor.prepare(json, index, resolved.natives,
                 options.gameDir, options.version);
 
+        File java = chooseJava(options);
+
         List<String> command = new ArrayList<>();
-        command.add(options.javaPath.getPath());
+        command.add(java.getPath());
         command.add("-Xmx" + options.ram + "M");
         command.add("-Xms" + Math.min(options.ram, 1024) + "M");
         command.add("-Dstorm.mcversion=" + options.version);
@@ -236,6 +238,37 @@ public final class GameLauncher {
             Log.warn("no client jar found, the game will very likely not start");
         }
         return out;
+    }
+
+    /**
+     * Picks a Java the chosen Minecraft can run on.
+     *
+     * <p>The configured one is kept when it fits. It usually does not: the
+     * launcher itself needs 17 or newer, and a 1.8.9 needs 8, so the java on
+     * the path is the wrong one about as often as it is right.
+     */
+    private static File chooseJava(Options options) {
+        int wanted = JavaLocator.requiredFor(options.version);
+        File configured = options.javaPath;
+
+        if (configured != null && configured.isFile()) {
+            int have = JavaLocator.versionOf(configured);
+            if (have == wanted) return configured;
+            Log.info("the configured Java is " + have + ", " + options.version + " needs " + wanted);
+        }
+
+        File match = JavaLocator.findMatching(wanted);
+        if (match != null) {
+            Log.info("using Java " + wanted + ": " + match);
+            return match;
+        }
+
+        Log.warn("no Java " + wanted + " found on this machine, and " + options.version
+                + " will very likely not start without one");
+        if (wanted == 8) {
+            Log.warn("install one with: winget install EclipseAdoptium.Temurin.8.JDK");
+        }
+        return configured != null && configured.isFile() ? configured : new File("java");
     }
 
     /**
