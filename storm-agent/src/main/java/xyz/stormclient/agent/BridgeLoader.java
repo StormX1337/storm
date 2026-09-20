@@ -23,7 +23,14 @@ public final class BridgeLoader {
         try {
             Class<?> bridge = Class.forName(className, true, GameClassLoader.get());
             Method install = bridge.getMethod("install");
-            install.invoke(null);
+            Object result = install.invoke(null);
+
+            // a bridge that cannot run in this game says so by returning false,
+            // and reporting it as installed anyway helps nobody
+            if (Boolean.FALSE.equals(result)) {
+                StormLogger.error("bridge " + className + " declined to install, Storm is not active");
+                return false;
+            }
             StormLogger.info("bridge " + className + " installed");
             return true;
         } catch (ClassNotFoundException e) {

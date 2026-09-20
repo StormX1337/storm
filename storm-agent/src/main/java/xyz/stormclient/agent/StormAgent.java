@@ -56,7 +56,9 @@ public final class StormAgent {
                         + "start the launcher with an explicit version or pass version=<id>");
                 return;
             }
-            BridgeLoader.load(version, options);
+            if (!BridgeLoader.load(version, options)) {
+                StormLogger.error("Storm did not load. The game runs normally, without the client.");
+            }
         } catch (Throwable t) {
             StormLogger.error("agent bootstrap failed", t);
         }

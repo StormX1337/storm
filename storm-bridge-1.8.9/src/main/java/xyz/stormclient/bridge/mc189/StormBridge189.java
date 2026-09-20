@@ -21,10 +21,11 @@ public final class StormBridge189 {
 
     private StormBridge189() { }
 
-    public static synchronized void install() {
+    /** @return false when this game cannot run the bridge. */
+    public static synchronized boolean install() {
         if (installed) {
             StormLogger.warn("the 1.8.9 bridge is already installed");
-            return;
+            return true;
         }
         installed = true;
 
@@ -32,14 +33,14 @@ public final class StormBridge189 {
             StormLogger.error("this bridge needs Forge 1.8.9, and this game is running without it.");
             StormLogger.error("install Forge 1.8.9 and start that profile, see docs/BRIDGE-BUILD.md");
             installed = false;
-            return;
+            return false;
         }
 
         Minecraft mc = Minecraft.getMinecraft();
         if (mc == null) {
             StormLogger.error("Minecraft has not been created yet, install the bridge later in the boot");
             installed = false;
-            return;
+            return false;
         }
 
         StormBoot.boot(new Mc189Minecraft(mc));
@@ -50,6 +51,7 @@ public final class StormBridge189 {
 
         Runtime.getRuntime().addShutdownHook(new Thread(StormBoot::shutdown, "Storm-Shutdown"));
         StormLogger.info("1.8.9 bridge installed");
+        return true;
     }
 
     /**
