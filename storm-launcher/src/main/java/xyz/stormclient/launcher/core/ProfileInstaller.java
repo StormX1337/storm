@@ -37,7 +37,10 @@ public final class ProfileInstaller {
                     ? (Map<String, Object>) profilesRaw
                     : new LinkedHashMap<String, Object>();
 
-            String jvmArgs = "-Xmx4G -XX:+EnableDynamicAgentLoading -Dstorm.mcversion=" + version
+            // the same flag is unknown to the Java old versions need
+            String dynamicAgents = JavaLocator.requiredFor(version) >= 21
+                    ? " -XX:+EnableDynamicAgentLoading" : "";
+            String jvmArgs = "-Xmx4G" + dynamicAgents + " -Dstorm.mcversion=" + version
                     + " -javaagent:" + agentJar.getAbsolutePath()
                     + (agentOptions == null || agentOptions.isEmpty() ? "" : "=" + agentOptions);
 

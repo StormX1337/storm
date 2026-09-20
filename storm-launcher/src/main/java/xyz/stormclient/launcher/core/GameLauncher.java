@@ -76,7 +76,11 @@ public final class GameLauncher {
         command.add("-Djava.library.path=" + natives.getAbsolutePath());
         command.add("-Dminecraft.launcher.brand=storm");
         command.add("-Dminecraft.launcher.version=" + xyz.stormclient.launcher.StormLauncher.VERSION);
-        command.add("-XX:+EnableDynamicAgentLoading");
+        // only exists from Java 21 on, and an older JVM refuses to start at all
+        // when handed a flag it does not know
+        if (JavaLocator.versionOf(java) >= 21) {
+            command.add("-XX:+EnableDynamicAgentLoading");
+        }
 
         installBridgeAsMod(options);
 
