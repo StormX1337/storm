@@ -39,7 +39,17 @@ public final class BridgeLoader {
         } catch (NoSuchMethodException e) {
             StormLogger.error(className + " does not expose install()");
         } catch (Throwable t) {
-            StormLogger.error("bridge " + className + " failed to install", t);
+            Throwable cause = t.getCause() == null ? t : t.getCause();
+
+            // Under a mod loader the agent runs before any game class exists.
+            // That is not a failure, it just means the bridge has to be loaded
+            // by the mod loader, from the mods folder.
+            if (cause instanceof NoClassDefFoundError || cause instanceof ClassNotFoundException) {
+                StormLogger.info("the game is not up yet, so the bridge will install itself"
+                        + " once the mod loader reaches it");
+                return true;
+            }
+            StormLogger.error("bridge " + className + " failed to install", cause);
         }
         return false;
     }

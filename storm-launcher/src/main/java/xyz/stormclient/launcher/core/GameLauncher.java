@@ -62,7 +62,7 @@ public final class GameLauncher {
                 resolved.manifest.getParentFile(), resolved.libraries);
         LibraryIndex index = LibraryIndex.build(libraryRoots);
 
-        List<String> classpath = classpath(resolved, json, index);
+        List<String> classpath = classpath(resolved, json, index, librariesDir(resolved, options.gameDir));
         File natives = NativesExtractor.prepare(json, index, resolved.natives,
                 options.gameDir, options.version);
 
@@ -75,6 +75,8 @@ public final class GameLauncher {
         command.add("-Dminecraft.launcher.brand=storm");
         command.add("-Dminecraft.launcher.version=" + xyz.stormclient.launcher.StormLauncher.VERSION);
         command.add("-XX:+EnableDynamicAgentLoading");
+
+        installBridgeAsMod(options);
 
         if (options.agentJar != null && options.agentJar.isFile()) {
             command.add("-javaagent:" + options.agentJar.getAbsolutePath()
@@ -199,7 +201,7 @@ public final class GameLauncher {
 
     @SuppressWarnings("unchecked")
     private static List<String> classpath(VersionResolver.Resolved resolved, Map<String, Object> json,
-                                          LibraryIndex index) {
+                                          LibraryIndex index, File librariesDir) {
         List<String> out = new ArrayList<>();
         List<String> missing = new ArrayList<>();
         Object rawLibraries = json.get("libraries");
@@ -213,6 +215,11 @@ public final class GameLauncher {
                 if (path == null) continue;
 
                 File jar = index.find(path);
+                if (jar == null) {
+                    // the installer left it behind, so fetch it rather than
+                    // handing the game a classpath with a hole in it
+                    jar = LibraryDownloader.fetch(path, baseUrl(library), librariesDir);
+                }
                 if (jar != null) out.add(jar.getAbsolutePath());
                 else missing.add(path);
             }
@@ -229,6 +236,48 @@ public final class GameLauncher {
             Log.warn("no client jar found, the game will very likely not start");
         }
         return out;
+    }
+
+    /**
+     * Puts the bridge in the mods folder.
+     *
+     * <p>Under Forge the agent runs before launchwrapper has loaded a single
+     * game class, so the bridge cannot install itself there. As a mod it is
+     * loaded at the right moment by the mod loader instead, and the agent's
+     * own attempt simply finds the work already done.
+     */
+    private static void installBridgeAsMod(Options options) {
+        if (options.bridgeJar == null || !options.bridgeJar.isFile()) return;
+
+        File mods = new File(options.gameDir, "mods");
+        if (!mods.isDirectory() && !mods.mkdirs()) {
+            Log.warn("could not create " + mods);
+            return;
+        }
+        File target = new File(mods, options.bridgeJar.getName());
+        if (target.isFile() && target.length() == options.bridgeJar.length()
+                && target.lastModified() >= options.bridgeJar.lastModified()) {
+            return;
+        }
+        try {
+            Files.copy(options.bridgeJar.toPath(), target.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Log.info("bridge copied into " + mods.getName() + "/");
+        } catch (IOException e) {
+            Log.warn("could not copy the bridge into the mods folder: " + e);
+        }
+    }
+
+    /** Where a downloaded library belongs. */
+    private static File librariesDir(VersionResolver.Resolved resolved, File gameDir) {
+        if (resolved.libraries != null && resolved.libraries.isDirectory()) return resolved.libraries;
+        return new File(gameDir, "libraries");
+    }
+
+    /** The maven base a library names, empty when it comes from Mojang. */
+    private static String baseUrl(Map<String, Object> library) {
+        Object url = library.get("url");
+        return url == null ? "" : String.valueOf(url);
     }
 
     /**

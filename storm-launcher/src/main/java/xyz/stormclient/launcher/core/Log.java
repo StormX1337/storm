@@ -19,6 +19,9 @@ public final class Log {
     public static void warn(String message)  { write("WARN", message); }
     public static void error(String message) { write("ERROR", message); }
 
+    /** Only interesting while chasing a problem, kept out of the normal log. */
+    public static void debugLine(String message) { write("DEBUG", message); }
+
     public static void error(String message, Throwable t) {
         write("ERROR", message + " - " + t);
     }
