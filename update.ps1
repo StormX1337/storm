@@ -16,6 +16,11 @@ param([string]$Task = "update")
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
+if (-not (Test-Path (Join-Path $PSScriptRoot "settings.gradle"))) {
+    Write-Host "this script has to sit in the Storm folder, next to settings.gradle" -ForegroundColor Red
+    exit 1
+}
+
 $repo   = "StormX1337/storm"
 $branch = "claude/charming-archimedes-400dsx"
 $url    = "https://github.com/$repo/archive/refs/heads/$branch.zip"
@@ -74,3 +79,8 @@ if ($Task -eq "build") {
 } else {
     Write-Host "run .\build.ps1 test next"
 }
+
+Write-Host ""
+Write-Host "next steps" -ForegroundColor Cyan
+Write-Host "  start the launcher   java -jar dist\storm-launcher.jar"
+Write-Host "  build the bridge     cd storm-bridge-1.8.9\workspace ; .\build-bridge.ps1"
