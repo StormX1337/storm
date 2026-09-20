@@ -47,14 +47,25 @@ public final class LauncherPaths {
         return new File(own, "storm-agent.jar").getAbsoluteFile();
     }
 
-    /** The bridge jar belonging to a version, looked for beside the agent. */
+    /** The bridge jar belonging to a version, looked for beside the agent first. */
     public static File bridgeJar(File agentJar, String jarName) {
+        File own = ownDirectory();
+        File working = new File(System.getProperty("user.dir", "."));
+
         File beside = agentJar == null || agentJar.getParentFile() == null
                 ? new File(jarName)
                 : new File(agentJar.getParentFile(), jarName);
-        if (beside.isFile()) return beside;
 
-        File inDist = new File(ownDirectory(), "dist/" + jarName);
-        return inDist.isFile() ? inDist : beside;
+        File[] candidates = {
+                beside,
+                new File(own, jarName),               // launcher started from dist
+                new File(own, "dist/" + jarName),     // launcher started from the repository root
+                new File(working, jarName),
+                new File(working, "dist/" + jarName)
+        };
+        for (File candidate : candidates) {
+            if (candidate.isFile()) return candidate.getAbsoluteFile();
+        }
+        return beside;
     }
 }

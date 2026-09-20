@@ -68,7 +68,20 @@ public final class LauncherConfig {
     }
     public void setGameDirectory(String v) { set("gameDir", v); }
 
-    public String agentJar()           { return get("agent", LauncherPaths.defaultAgentJar().getAbsolutePath()); }
+    /**
+     * A path stored months ago is worth nothing if the jar has moved since, so
+     * a stored path that no longer exists gives way to whatever is found now.
+     */
+    public String agentJar() {
+        String stored = properties.getProperty("agent");
+        if (stored != null && new File(stored).isFile()) return stored;
+
+        File found = LauncherPaths.defaultAgentJar();
+        if (stored != null && !found.getAbsolutePath().equals(stored)) {
+            Log.info("agent jar moved, using " + found);
+        }
+        return found.getAbsolutePath();
+    }
     public void setAgentJar(String v)  { set("agent", v); }
 
     public String configProfile()          { return get("profile", "default"); }

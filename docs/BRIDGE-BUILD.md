@@ -20,8 +20,19 @@ Mojang's or Forge's servers. Expect to iterate.
 ## 1. Install Forge in the game
 
 Get the 1.8.9 installer from [files.minecraftforge.net](https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html)
-(version `11.15.1.2318`) and run it as a client install. Then pick that profile
-in your launcher.
+(version `11.15.1.2318`) and run it as a client install, pointing it at the
+directory Storm is configured to use.
+
+The installer refuses a directory without a `launcher_profiles.json`, which
+only the official launcher creates. For any other launcher, write a minimal one
+first and the installer is happy:
+
+```powershell
+'{"profiles":{}}' | Set-Content "$env:APPDATA\<your launcher>\launcher_profiles.json"
+```
+
+That keeps the game files you already have instead of downloading 1.8.9 a
+second time into `.minecraft`.
 
 Storm refuses to load on a vanilla 1.8.9 and says so in one line, rather than
 failing somewhere inside the first tick.

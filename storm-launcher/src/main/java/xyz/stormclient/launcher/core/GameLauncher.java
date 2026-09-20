@@ -79,6 +79,12 @@ public final class GameLauncher {
         if (options.agentJar != null && options.agentJar.isFile()) {
             command.add("-javaagent:" + options.agentJar.getAbsolutePath()
                     + (options.agentOptions.isEmpty() ? "" : "=" + options.agentOptions));
+            Log.info("agent " + options.agentJar);
+            Log.info("bridge " + (options.bridgeJar != null && options.bridgeJar.isFile()
+                    ? options.bridgeJar.toString()
+                    : "not found, Storm will not load into the game"));
+        } else {
+            Log.warn("agent jar missing, the game starts without Storm");
         }
 
         command.add("-cp");
