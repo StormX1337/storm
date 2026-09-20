@@ -2,6 +2,7 @@ package xyz.stormclient.launcher.core;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -52,6 +53,7 @@ public final class GameLauncher {
 
         Map<String, Object> json = Json.readObject(
                 new String(Files.readAllBytes(resolved.manifest.toPath()), StandardCharsets.UTF_8));
+        json = inherit(json, options.gameDir, 0);
 
         String mainClass = String.valueOf(json.getOrDefault("mainClass", "net.minecraft.client.main.Main"));
         String assetIndex = assetIndex(json);
@@ -123,6 +125,53 @@ public final class GameLauncher {
         }
         return options.version + " is not installed in " + options.gameDir.getName()
                 + ". Found: " + String.join(", ", here);
+    }
+
+    /**
+     * Resolves inheritsFrom.
+     *
+     * <p>A Forge or Fabric profile lists only what it adds and points at the
+     * version it builds on for everything else. Without following that link the
+     * classpath comes out with a handful of entries and the game dies on a
+     * missing vanilla class.
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> inherit(Map<String, Object> child, File gameDir, int depth) {
+        Object parentId = child.get("inheritsFrom");
+        if (parentId == null || depth > 4) return child;
+
+        VersionResolver.Resolved parentFile = VersionResolver.resolveBase(gameDir, String.valueOf(parentId));
+        if (parentFile == null || parentFile.manifest == null) {
+            Log.warn("this profile inherits from " + parentId + ", which is not installed");
+            return child;
+        }
+        Log.info("inheriting from " + parentId + ": " + parentFile.manifest.getName());
+
+        Map<String, Object> parent;
+        try {
+            parent = Json.readObject(new String(
+                    Files.readAllBytes(parentFile.manifest.toPath()), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            Log.warn("could not read the inherited manifest: " + e);
+            return child;
+        }
+        parent = inherit(parent, gameDir, depth + 1);
+
+        Map<String, Object> merged = new LinkedHashMap<>(parent);
+        for (Map.Entry<String, Object> entry : child.entrySet()) {
+            if ("libraries".equals(entry.getKey())) continue;
+            merged.put(entry.getKey(), entry.getValue());
+        }
+
+        // the child's libraries come first, so its versions win on the classpath
+        List<Object> libraries = new ArrayList<>();
+        Object childLibraries = child.get("libraries");
+        Object parentLibraries = parent.get("libraries");
+        if (childLibraries instanceof List) libraries.addAll((List<Object>) childLibraries);
+        if (parentLibraries instanceof List) libraries.addAll((List<Object>) parentLibraries);
+        merged.put("libraries", libraries);
+
+        return merged;
     }
 
     private static void pipe(Process process, Consumer<String> output) {

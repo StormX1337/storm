@@ -54,22 +54,37 @@ public final class VersionResolver {
      *         Results are cached briefly, since the UI asks on every repaint.
      */
     public static synchronized Resolved resolve(File root, String version) {
+        return resolve(root, version, false);
+    }
+
+    /**
+     * Resolves the unmodded version.
+     *
+     * <p>Following inheritsFrom has to land on the version a profile builds on,
+     * never on the profile itself, or a Forge manifest inherits from itself
+     * until the depth limit stops it.
+     */
+    public static synchronized Resolved resolveBase(File root, String version) {
+        return resolve(root, version, true);
+    }
+
+    private static synchronized Resolved resolve(File root, String version, boolean baseOnly) {
         if (root == null || !root.isDirectory()) return null;
 
-        String key = root.getAbsolutePath() + "|" + version;
+        String key = root.getAbsolutePath() + "|" + version + "|" + baseOnly;
         Object[] cached = CACHE.get(key);
         if (cached != null && System.currentTimeMillis() - (Long) cached[0] < CACHE_MS) {
             return (Resolved) cached[1];
         }
-        Resolved resolved = resolveUncached(root, version);
+        Resolved resolved = resolveUncached(root, version, baseOnly);
         CACHE.put(key, new Object[] { System.currentTimeMillis(), resolved });
         return resolved;
     }
 
     public static synchronized void clearCache() { CACHE.clear(); }
 
-    private static Resolved resolveUncached(File root, String version) {
-        File manifest = findManifest(root, version);
+    private static Resolved resolveUncached(File root, String version, boolean baseOnly) {
+        File manifest = findManifest(root, version, baseOnly);
         if (manifest == null) return null;
         Log.info("version manifest for " + version + ": " + manifest);
 
@@ -96,6 +111,10 @@ public final class VersionResolver {
         if (assets == null) assets = new File(root, "assets");
 
         File clientJar = findClientJar(root, version, manifestDir);
+        if (clientJar == null) {
+            // a Forge profile carries no client jar, the inherited version's is used
+            clientJar = findClientJar(root, version, new File(root, "versions/" + version));
+        }
 
         String layout = describeLayout(root, manifest);
         return new Resolved(manifest, clientJar, libraries, natives, assets, layout);
@@ -110,7 +129,7 @@ public final class VersionResolver {
             "screenshots", "logs", "crash-reports", "natives", "cache", "caches",
             "texturepacks", "server-resource-packs", "webcache"));
 
-    private static File findManifest(File root, String version) {
+    private static File findManifest(File root, String version, boolean baseOnly) {
         File[] known = {
                 new File(root, "versions/" + version + "/" + version + ".json"),   // official
                 new File(root, "meta/versions/" + version + ".json"),              // Modrinth style
@@ -119,7 +138,7 @@ public final class VersionResolver {
                 new File(root, version + "/" + version + ".json")
         };
         for (File candidate : known) {
-            if (isManifest(candidate, version)) return candidate;
+            if (isManifest(candidate, version, baseOnly)) return candidate;
         }
 
         // Nothing known matched. Launchers name the file whatever they like, so
@@ -133,14 +152,19 @@ public final class VersionResolver {
         java.util.Set<String> otherVersions = new java.util.LinkedHashSet<>();
 
         for (File candidate : candidates) {
-            int score = score(candidate, version);
-            if (score > bestScore && isManifest(candidate, version)) {
-                best = candidate;
-                bestScore = score;
+            if (!isManifest(candidate, version, baseOnly)) {
+                String id = versionIdOf(candidate);
+                if (id != null && !id.equalsIgnoreCase(version)) otherVersions.add(id);
                 continue;
             }
-            String id = versionIdOf(candidate);
-            if (id != null && !id.equalsIgnoreCase(version)) otherVersions.add(id);
+            // A profile that inherits from this version is a modded one, and the
+            // bridge only loads under Forge, so it beats plain vanilla.
+            int score = score(candidate, version)
+                    + (!baseOnly && inheritsFrom(candidate, version) ? 10 : 0);
+            if (score > bestScore) {
+                best = candidate;
+                bestScore = score;
+            }
         }
 
         if (best == null && !otherVersions.isEmpty()) {
@@ -161,6 +185,18 @@ public final class VersionResolver {
             return id == null ? null : String.valueOf(id);
         } catch (IOException | RuntimeException e) {
             return null;
+        }
+    }
+
+    /** True for a profile that builds on the given version, such as a Forge one. */
+    private static boolean inheritsFrom(File file, String version) {
+        try {
+            Map<String, Object> json = Json.readObject(
+                    new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+            Object inherits = json.get("inheritsFrom");
+            return inherits != null && String.valueOf(inherits).equalsIgnoreCase(version);
+        } catch (IOException | RuntimeException e) {
+            return false;
         }
     }
 
@@ -203,7 +239,7 @@ public final class VersionResolver {
      * under a content hash, so the file name says nothing, and picking the
      * wrong one builds a classpath for a different Minecraft entirely.
      */
-    private static boolean isManifest(File file, String version) {
+    private static boolean isManifest(File file, String version, boolean baseOnly) {
         if (file == null || !file.isFile() || file.length() > 4L * 1024 * 1024) return false;
         try {
             Map<String, Object> json = Json.readObject(
@@ -217,6 +253,7 @@ public final class VersionResolver {
             Object inherits = json.get("inheritsFrom");
 
             if (id != null && String.valueOf(id).equalsIgnoreCase(version)) return true;
+            if (baseOnly) return false;
             if (inherits != null && String.valueOf(inherits).equalsIgnoreCase(version)) return true;
 
             // a manifest that names a different version is the wrong one, not a
@@ -321,6 +358,10 @@ public final class VersionResolver {
         Log.info("root    " + root);
         clearCache();
         Resolved resolved = resolve(root, version);
+        Resolved base = resolveBase(root, version);
+        if (base != null && resolved != null && !base.manifest.equals(resolved.manifest)) {
+            Log.info("base version " + version + ": " + base.manifest);
+        }
         if (resolved == null) {
             Log.warn(version + " not found under " + root);
             Log.info("versions present: " + String.join(", ", GameDirectories.installedIn(root)));
