@@ -137,14 +137,23 @@ public final class VersionResolver {
                 new File(root, "versions/" + version + ".json"),
                 new File(root, version + "/" + version + ".json")
         };
-        for (File candidate : known) {
-            if (isManifest(candidate, version, baseOnly)) return candidate;
+        // Taking the first known path that matches is right when the plain
+        // version is what was asked for. It is wrong otherwise: installing Forge
+        // writes the vanilla profile next to its own, so versions/<id>/<id>.json
+        // starts existing and would win before the Forge profile is even seen.
+        if (baseOnly) {
+            for (File candidate : known) {
+                if (isManifest(candidate, version, true)) return candidate;
+            }
         }
 
         // Nothing known matched. Launchers name the file whatever they like, so
         // score every json by where it sits and pick the best one that actually
         // parses as a version manifest.
         List<File> candidates = new ArrayList<>();
+        for (File candidate : known) {
+            if (candidate.isFile()) candidates.add(candidate);
+        }
 
         // versions/ first and always: it is where every launcher keeps its
         // profiles, and a cache directory full of manifests could otherwise use
@@ -177,9 +186,11 @@ public final class VersionResolver {
                 continue;
             }
             // A profile that inherits from this version is a modded one, and the
-            // bridge only loads under Forge, so it beats plain vanilla.
+            // bridge only loads under Forge, so it beats plain vanilla outright.
+            // The bonus is far above any score the file's location can earn,
+            // because vanilla sitting at versions/<id>/<id>.json scores high.
             int score = score(candidate, version)
-                    + (!baseOnly && inheritsFrom(candidate, version) ? 10 : 0);
+                    + (!baseOnly && inheritsFrom(candidate, version) ? 100 : 0);
             if (score > bestScore) {
                 best = candidate;
                 bestScore = score;
