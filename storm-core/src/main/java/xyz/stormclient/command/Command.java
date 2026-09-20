@@ -35,11 +35,11 @@ public abstract class Command {
     protected void print(String message) { Bridge.mc().chat().print(message); }
 
     protected void error(String message) {
-        Bridge.mc().chat().print("§c" + message);
+        Bridge.mc().chat().print("\u00a7c" + message);
     }
 
     protected void printUsage() {
-        print("§7usage: §f" + Storm.get().commands().prefix() + usage);
+        print("\u00a77usage: \u00a7f" + Storm.get().commands().prefix() + usage);
     }
 
     protected String join(String[] args, int from) {

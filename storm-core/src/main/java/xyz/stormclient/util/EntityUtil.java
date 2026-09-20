@@ -54,6 +54,6 @@ public final class EntityUtil {
     }
 
     public static String stripColor(String input) {
-        return input == null ? "" : input.replaceAll("(?i)§[0-9A-FK-OR]", "");
+        return input == null ? "" : input.replaceAll("(?i)\u00a7[0-9A-FK-OR]", "");
     }
 }

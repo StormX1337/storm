@@ -286,8 +286,8 @@ public final class InjectPanel extends BasePanel {
                 UiKit.text(g, process.shortName(), 40, y + 22, StormTheme.TEXT);
                 g.setFont(StormTheme.font(11));
                 String detail = "pid " + process.pid()
-                        + (process.detectedVersion().isEmpty() ? "" : "  ·  " + process.detectedVersion())
-                        + (process.minecraft() ? "  ·  minecraft" : "  ·  java process");
+                        + (process.detectedVersion().isEmpty() ? "" : "  \u00b7  " + process.detectedVersion())
+                        + (process.minecraft() ? "  \u00b7  minecraft" : "  \u00b7  java process");
                 UiKit.text(g, detail, 40, y + 38, StormTheme.TEXT_DIM);
 
                 g.setFont(StormTheme.font(11));

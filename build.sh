@@ -46,12 +46,12 @@ mkdir -p "$OUT/core" "$OUT/agent" "$OUT/launcher" "$OUT/test" "$DIST"
 # ---- storm-core ---------------------------------------------------
 echo "[1/4] storm-core"
 find "$ROOT/storm-core/src/main/java" -name '*.java' > "$OUT/core.txt"
-"$JAVAC" --release 8 -nowarn -d "$OUT/core" @"$OUT/core.txt"
+"$JAVAC" --release 8 -encoding UTF-8 -nowarn -d "$OUT/core" @"$OUT/core.txt"
 
 # ---- storm-agent --------------------------------------------------
 echo "[2/4] storm-agent"
 find "$ROOT/storm-agent/src/main/java" -name '*.java' > "$OUT/agent.txt"
-"$JAVAC" --release 8 -nowarn -cp "$OUT/core" -d "$OUT/agent" @"$OUT/agent.txt"
+"$JAVAC" --release 8 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/agent" @"$OUT/agent.txt"
 
 cat > "$OUT/agent-manifest.txt" <<'MANIFEST'
 Premain-Class: xyz.stormclient.agent.StormAgent
@@ -66,7 +66,7 @@ cp -r "$OUT/core/." "$OUT/agent/"
 # ---- storm-launcher -----------------------------------------------
 echo "[3/4] storm-launcher"
 find "$ROOT/storm-launcher/src/main/java" -name '*.java' > "$OUT/launcher.txt"
-"$JAVAC" --release 17 -nowarn -cp "$OUT/core" -d "$OUT/launcher" @"$OUT/launcher.txt"
+"$JAVAC" --release 17 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/launcher" @"$OUT/launcher.txt"
 
 cp -r "$OUT/core/." "$OUT/launcher/"
 "$JAR" --create --file "$DIST/storm-launcher.jar" \
@@ -76,7 +76,7 @@ cp -r "$OUT/core/." "$OUT/launcher/"
 if [ "${1:-}" = "test" ]; then
     echo "[4/4] smoke test"
     find "$ROOT/storm-core/src/test/java" -name '*.java' > "$OUT/test.txt"
-    "$JAVAC" --release 8 -nowarn -cp "$OUT/core" -d "$OUT/test" @"$OUT/test.txt"
+    "$JAVAC" --release 8 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/test" @"$OUT/test.txt"
     "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.StormSmokeTest
 else
     echo "[4/4] smoke test      skipped (run ./build.sh test to include it)"

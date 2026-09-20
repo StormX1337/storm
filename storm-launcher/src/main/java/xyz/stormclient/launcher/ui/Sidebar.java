@@ -144,7 +144,7 @@ public final class Sidebar extends JComponent {
         }
 
         g.setFont(StormTheme.font(10));
-        UiKit.text(g, "own build · no third party code", 20, h - 20, StormTheme.TEXT_FAINT);
+        UiKit.text(g, "own build \u00b7 no third party code", 20, h - 20, StormTheme.TEXT_FAINT);
         g.dispose();
     }
 }

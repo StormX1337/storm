@@ -10,7 +10,7 @@ import xyz.stormclient.setting.StringSetting;
 
 public class ChatSuffix extends Module {
 
-    private final StringSetting  suffix   = add(new StringSetting("Suffix", " » " + StormInfo.NAME));
+    private final StringSetting  suffix   = add(new StringSetting("Suffix", " \u00bb " + StormInfo.NAME));
     private final BooleanSetting commands = add(new BooleanSetting("On commands", false));
 
     public ChatSuffix() {

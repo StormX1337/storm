@@ -24,19 +24,19 @@ public final class Commands {
             if (args.length > 0) {
                 Command command = Storm.get().commands().byName(args[0]);
                 if (command == null) { error("no command called " + args[0]); return; }
-                print("§f" + command.name() + " §7- " + command.description());
+                print("\u00a7f" + command.name() + " \u00a77- " + command.description());
                 printUsageOf(command);
                 return;
             }
-            print("§f" + StormInfo.FULL_NAME + " §7commands");
+            print("\u00a7f" + StormInfo.FULL_NAME + " \u00a77commands");
             for (Command command : Storm.get().commands().commands()) {
-                Bridge.mc().chat().printRaw("  §b" + Storm.get().commands().prefix() + command.name()
-                        + " §8- §7" + command.description());
+                Bridge.mc().chat().printRaw("  \u00a7b" + Storm.get().commands().prefix() + command.name()
+                        + " \u00a78- \u00a77" + command.description());
             }
         }
 
         private void printUsageOf(Command command) {
-            Bridge.mc().chat().printRaw("  §7" + Storm.get().commands().prefix() + command.usage());
+            Bridge.mc().chat().printRaw("  \u00a77" + Storm.get().commands().prefix() + command.usage());
         }
     }
 
@@ -56,18 +56,18 @@ public final class Commands {
             }
             if (args.length == 1) {
                 module.toggle();
-                print(module.name() + " §7is now " + (module.isEnabled() ? "§aon" : "§coff"));
+                print(module.name() + " \u00a77is now " + (module.isEnabled() ? "\u00a7aon" : "\u00a7coff"));
                 return;
             }
 
             Setting<?> setting = module.setting(args[1]);
             if (setting == null) { error(module.name() + " has no setting " + args[1]); return; }
             if (args.length == 2) {
-                print(module.name() + " §7" + setting.name() + " §f= " + setting.display());
+                print(module.name() + " \u00a77" + setting.name() + " \u00a7f= " + setting.display());
                 return;
             }
             setting.deserialize(join(args, 2));
-            print(module.name() + " §7" + setting.name() + " §f-> " + setting.display());
+            print(module.name() + " \u00a77" + setting.name() + " \u00a7f-> " + setting.display());
         }
     }
 
@@ -83,13 +83,13 @@ public final class Commands {
 
             if (args[1].equalsIgnoreCase("none")) {
                 module.setKeybind(Keyboard.KEY_NONE);
-                print(module.name() + " §7unbound");
+                print(module.name() + " \u00a77unbound");
                 return;
             }
             int key = Keyboard.code(args[1]);
             if (key == Keyboard.KEY_NONE) { error("unknown key " + args[1]); return; }
             module.setKeybind(key);
-            print(module.name() + " §7bound to §f" + Keyboard.name(key));
+            print(module.name() + " \u00a77bound to \u00a7f" + Keyboard.name(key));
         }
     }
 
@@ -104,17 +104,17 @@ public final class Commands {
             String name = args.length > 1 ? args[1] : config.currentName();
 
             if (args[0].equalsIgnoreCase("save")) {
-                print(config.save(name) ? "saved §f" + name : "§ccould not save " + name);
+                print(config.save(name) ? "saved \u00a7f" + name : "\u00a7ccould not save " + name);
             } else if (args[0].equalsIgnoreCase("load")) {
-                print(config.load(name) ? "loaded §f" + name : "§ccould not load " + name);
+                print(config.load(name) ? "loaded \u00a7f" + name : "\u00a7ccould not load " + name);
             } else if (args[0].equalsIgnoreCase("new")) {
-                print(config.create(name) ? "created §f" + name : "§c" + name + " already exists");
+                print(config.create(name) ? "created \u00a7f" + name : "\u00a7c" + name + " already exists");
             } else if (args[0].equalsIgnoreCase("delete")) {
-                print(config.delete(name) ? "deleted §f" + name : "§ccould not delete " + name);
+                print(config.delete(name) ? "deleted \u00a7f" + name : "\u00a7ccould not delete " + name);
             } else if (args[0].equalsIgnoreCase("list")) {
-                print("configs §8(" + config.currentName() + " active)");
+                print("configs \u00a78(" + config.currentName() + " active)");
                 for (String profile : config.profiles()) {
-                    Bridge.mc().chat().printRaw("  §b" + profile);
+                    Bridge.mc().chat().printRaw("  \u00a7b" + profile);
                 }
             } else {
                 printUsage();
@@ -132,8 +132,8 @@ public final class Commands {
             xyz.stormclient.social.FriendManager friends = Storm.get().friends();
 
             if (args[0].equalsIgnoreCase("list")) {
-                print("friends §8(" + friends.size() + ")");
-                for (String name : friends.names()) Bridge.mc().chat().printRaw("  §b" + name);
+                print("friends \u00a78(" + friends.size() + ")");
+                for (String name : friends.names()) Bridge.mc().chat().printRaw("  \u00a7b" + name);
                 return;
             }
             if (args[0].equalsIgnoreCase("clear")) {
@@ -145,9 +145,9 @@ public final class Commands {
 
             if (args[0].equalsIgnoreCase("add")) {
                 friends.add(args[1], args.length > 2 ? args[2] : "");
-                print("§f" + args[1] + " §7is now your friend");
+                print("\u00a7f" + args[1] + " \u00a77is now your friend");
             } else if (args[0].equalsIgnoreCase("remove")) {
-                print(friends.remove(args[1]) ? "removed §f" + args[1] : "§c" + args[1] + " was not a friend");
+                print(friends.remove(args[1]) ? "removed \u00a7f" + args[1] : "\u00a7c" + args[1] + " was not a friend");
             } else {
                 printUsage();
             }
@@ -177,20 +177,20 @@ public final class Commands {
         @Override public void execute(String[] args) {
             Theme theme = Storm.get().theme();
             if (args.length < 2) {
-                print("current theme §f" + theme.preset().name().toLowerCase());
+                print("current theme \u00a7f" + theme.preset().name().toLowerCase());
                 printUsage();
                 return;
             }
             if (args[0].equalsIgnoreCase("preset")) {
                 try {
                     theme.setPreset(Theme.Preset.valueOf(args[1].toUpperCase()));
-                    print("theme set to §f" + args[1].toLowerCase());
+                    print("theme set to \u00a7f" + args[1].toLowerCase());
                 } catch (IllegalArgumentException e) {
                     error("unknown preset, try storm / midnight / ember / mint / light");
                 }
             } else if (args[0].equalsIgnoreCase("accent")) {
                 theme.setAccent(ColorUtil.parseHex(args[1]));
-                print("accent set to §f" + args[1]);
+                print("accent set to \u00a7f" + args[1]);
             } else {
                 printUsage();
             }
@@ -209,7 +209,7 @@ public final class Commands {
                 module.setEnabled(false);
                 count++;
             }
-            print("disabled §f" + count + " §7modules");
+            print("disabled \u00a7f" + count + " \u00a77modules");
         }
     }
 
@@ -221,7 +221,7 @@ public final class Commands {
         @Override public void execute(String[] args) {
             if (args.length == 0) { printUsage(); return; }
             Storm.get().commands().setPrefix(args[0]);
-            print("prefix is now §f" + args[0]);
+            print("prefix is now \u00a7f" + args[0]);
         }
     }
 
@@ -254,7 +254,7 @@ public final class Commands {
             Module module = Storm.get().modules().byName(args[0]);
             if (module == null) { error("no module called " + args[0]); return; }
             for (Setting<?> setting : module.settings()) setting.reset();
-            print(module.name() + " §7reset");
+            print(module.name() + " \u00a77reset");
         }
     }
 
@@ -264,12 +264,12 @@ public final class Commands {
         public Info() { super("info", "info", "Shows build information", "version", "about"); }
 
         @Override public void execute(String[] args) {
-            print("§f" + StormInfo.FULL_NAME + " §b" + StormInfo.VERSION);
-            Bridge.mc().chat().printRaw("  §7build   §f" + StormInfo.BUILD);
-            Bridge.mc().chat().printRaw("  §7game    §f" + Bridge.version().id());
-            Bridge.mc().chat().printRaw("  §7modules §f" + Storm.get().modules().all().size()
-                    + " §8(" + Storm.get().modules().enabled().size() + " on)");
-            Bridge.mc().chat().printRaw("  §7config  §f" + Storm.get().config().currentName());
+            print("\u00a7f" + StormInfo.FULL_NAME + " \u00a7b" + StormInfo.VERSION);
+            Bridge.mc().chat().printRaw("  \u00a77build   \u00a7f" + StormInfo.BUILD);
+            Bridge.mc().chat().printRaw("  \u00a77game    \u00a7f" + Bridge.version().id());
+            Bridge.mc().chat().printRaw("  \u00a77modules \u00a7f" + Storm.get().modules().all().size()
+                    + " \u00a78(" + Storm.get().modules().enabled().size() + " on)");
+            Bridge.mc().chat().printRaw("  \u00a77config  \u00a7f" + Storm.get().config().currentName());
         }
     }
 }

@@ -116,7 +116,7 @@ public final class StormFontRenderer {
         int width = 0;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == '§' && i + 1 < text.length()) { i++; continue; }   // colour code
+            if (c == '\u00a7' && i + 1 < text.length()) { i++; continue; }   // colour code
             if (c > LAST_CHAR) c = '?';
             width += charWidth[c];
         }
@@ -138,7 +138,7 @@ public final class StormFontRenderer {
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
 
-            if (c == '§' && i + 1 < text.length()) {
+            if (c == '\u00a7' && i + 1 < text.length()) {
                 color = colorCode(text.charAt(++i), argb);
                 continue;
             }

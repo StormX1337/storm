@@ -22,7 +22,7 @@ public final class AboutPanel extends BasePanel {
     };
 
     public AboutPanel() {
-        super("About", "Storm Client · xyz.stormclient");
+        super("About", "Storm Client \u00b7 xyz.stormclient");
     }
 
     @Override protected void paintBody(Graphics2D g) {
@@ -31,7 +31,7 @@ public final class AboutPanel extends BasePanel {
         g.setFont(StormTheme.bold(30));
         UiKit.text(g, "STORM", 104, 140, StormTheme.TEXT);
         g.setFont(StormTheme.font(13));
-        UiKit.text(g, "client 1.0.0  ·  launcher " + StormLauncher.VERSION, 104, 160, StormTheme.ACCENT);
+        UiKit.text(g, "client 1.0.0  \u00b7  launcher " + StormLauncher.VERSION, 104, 160, StormTheme.ACCENT);
 
         g.setFont(StormTheme.font(13));
         int y = 214;

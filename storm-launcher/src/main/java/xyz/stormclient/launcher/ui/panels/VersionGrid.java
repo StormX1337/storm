@@ -151,7 +151,7 @@ public final class VersionGrid extends JComponent {
 
         // loader and protocol
         g.setFont(StormTheme.font(10));
-        UiKit.text(g, version.loader().name().toLowerCase() + "  ·  protocol " + version.protocol(),
+        UiKit.text(g, version.loader().name().toLowerCase() + "  \u00b7  protocol " + version.protocol(),
                 x + 16, y + 54, StormTheme.TEXT_FAINT);
 
         g.setFont(StormTheme.font(11));

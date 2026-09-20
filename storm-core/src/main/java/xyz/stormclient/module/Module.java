@@ -125,7 +125,7 @@ public abstract class Module {
 
     public String displayName() {
         String tag = tag();
-        return tag == null || tag.isEmpty() ? name : name + " §7" + tag;
+        return tag == null || tag.isEmpty() ? name : name + " \u00a77" + tag;
     }
 
     // ------------------------------------------------------------------

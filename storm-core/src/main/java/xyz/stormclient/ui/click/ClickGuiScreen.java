@@ -106,11 +106,11 @@ public final class ClickGuiScreen extends Screen {
         r.rect(0, y, width, 16, ColorUtil.fade(theme().panel(), t * 0.9F));
         r.rect(0, y, width, 1, ColorUtil.withAlpha(theme().accent(), (int) (90 * t)));
 
-        String left = "left click toggle  ·  right click settings  ·  middle click bind";
+        String left = "left click toggle  \u00b7  right click settings  \u00b7  middle click bind";
         small.draw(left, 8, y + 4, theme().textFaint());
 
         String right = "config: " + Storm.get().config().currentName()
-                + "   ·   " + StormInfo.FULL_NAME;
+                + "   \u00b7   " + StormInfo.FULL_NAME;
         small.draw(right, width - small.width(right) - 8, y + 4, theme().textDim());
     }
 

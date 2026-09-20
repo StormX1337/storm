@@ -12,11 +12,11 @@ public final class StormInfo {
     public static final String PACKAGE    = "xyz.stormclient";
 
     /** Chat prefix, using the client accent colours. */
-    public static final String CHAT_PREFIX = "§b§lStorm §8| §r";
+    public static final String CHAT_PREFIX = "\u00a7b\u00a7lStorm \u00a78| \u00a7r";
 
     private StormInfo() { }
 
     public static String watermark() {
-        return NAME + " §8" + VERSION;
+        return NAME + " \u00a78" + VERSION;
     }
 }

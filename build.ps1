@@ -150,12 +150,12 @@ function Invoke-Step($name, $scriptBlock) {
 
 Invoke-Step "[1/4] storm-core" {
     Write-SourceList "$root\storm-core\src\main\java" "$out\core.txt"
-    & $javac --release 8 -nowarn -d "$out\core" "@$out\core.txt"
+    & $javac --release 8 -encoding UTF-8 -nowarn -d "$out\core" "@$out\core.txt"
 }
 
 Invoke-Step "[2/4] storm-agent" {
     Write-SourceList "$root\storm-agent\src\main\java" "$out\agent.txt"
-    & $javac --release 8 -nowarn -cp "$out\core" -d "$out\agent" "@$out\agent.txt"
+    & $javac --release 8 -encoding UTF-8 -nowarn -cp "$out\core" -d "$out\agent" "@$out\agent.txt"
 }
 
 @"
@@ -172,7 +172,7 @@ Invoke-Step "      packing storm-agent.jar" {
 
 Invoke-Step "[3/4] storm-launcher" {
     Write-SourceList "$root\storm-launcher\src\main\java" "$out\launcher.txt"
-    & $javac --release 17 -nowarn -cp "$out\core" -d "$out\launcher" "@$out\launcher.txt"
+    & $javac --release 17 -encoding UTF-8 -nowarn -cp "$out\core" -d "$out\launcher" "@$out\launcher.txt"
 }
 
 Copy-Item "$out\core\*" -Destination "$out\launcher" -Recurse -Force
@@ -184,7 +184,7 @@ Invoke-Step "      packing storm-launcher.jar" {
 if ($Task -eq "test") {
     Invoke-Step "[4/4] smoke test" {
         Write-SourceList "$root\storm-core\src\test\java" "$out\test.txt"
-        & $javac --release 8 -nowarn -cp "$out\core" -d "$out\test" "@$out\test.txt"
+        & $javac --release 8 -encoding UTF-8 -nowarn -cp "$out\core" -d "$out\test" "@$out\test.txt"
     }
     & $java -cp "$out\core;$out\test" xyz.stormclient.test.StormSmokeTest
     if ($LASTEXITCODE -ne 0) { exit 1 }

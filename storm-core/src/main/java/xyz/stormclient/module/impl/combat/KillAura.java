@@ -35,13 +35,13 @@ public class KillAura extends Module {
     private final ModeSetting   mode       = add(new ModeSetting("Mode", "Single", "Single", "Switch", "Multi"));
     private final NumberSetting range      = add(new NumberSetting("Range", 3.0, 1.0, 6.0, 0.05).suffix("m"));
     private final NumberSetting wallRange  = add(new NumberSetting("Wall range", 3.0, 0.0, 6.0, 0.05).suffix("m"));
-    private final NumberSetting fov        = add(new NumberSetting("FOV", 180, 30, 360, 5).suffix("°"));
+    private final NumberSetting fov        = add(new NumberSetting("FOV", 180, 30, 360, 5).suffix("\u00b0"));
     private final NumberSetting minCps     = add(new NumberSetting("Min CPS", 8, 1, 20, 1));
     private final NumberSetting maxCps     = add(new NumberSetting("Max CPS", 12, 1, 20, 1));
     private final ModeSetting   sort       = add(new ModeSetting("Sort", "distance", "distance", "health", "angle", "armor", "hurt time"));
     private final ModeSetting   rotations  = add(new ModeSetting("Rotations", "Silent", "None", "Silent", "Lock", "Smooth"));
     private final NumberSetting rotSpeed   = add(new NumberSetting("Rotation speed", 55, 1, 180, 1)
-            .suffix("°").visibleWhen(() -> true));
+            .suffix("\u00b0").visibleWhen(() -> true));
     private final NumberSetting randomness = add(new NumberSetting("Randomization", 0.25, 0, 1, 0.05));
     private final ModeSetting   aimPoint   = add(new ModeSetting("Aim point", "Nearest", "Head", "Body", "Feet", "Nearest"));
     private final BooleanSetting rayTrace  = add(new BooleanSetting("Raytrace", false)

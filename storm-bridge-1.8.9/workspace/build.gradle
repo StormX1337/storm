@@ -44,6 +44,13 @@ archivesBaseName = 'storm-bridge-1.8.9'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+// Windows javac defaults to the system code page, which turns any non ASCII
+// character in a source file into a compile error. The sources are pure ASCII,
+// this is the second line of defence.
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
 minecraft {
     version = '1.8.9-11.15.1.2318-1.8.9'
     mappings = 'stable_22'

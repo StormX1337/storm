@@ -89,7 +89,7 @@ public final class ModuleButton {
             font.draw(tag, x + 10 + font.width(module.name()), y + 4, theme.textFaint());
         }
         if (!components.isEmpty()) {
-            String arrow = expanded ? "▴" : "▾";
+            String arrow = expanded ? "\u25b4" : "\u25be";
             font.draw(arrow, x + width - 12, y + 4, theme.textFaint());
         }
 

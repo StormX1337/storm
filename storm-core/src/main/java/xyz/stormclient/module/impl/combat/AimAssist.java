@@ -18,7 +18,7 @@ import xyz.stormclient.target.TargetSort;
 public class AimAssist extends Module {
 
     private final NumberSetting range   = add(new NumberSetting("Range", 4.0, 1.0, 8.0, 0.1).suffix("m"));
-    private final NumberSetting fov     = add(new NumberSetting("FOV", 60, 5, 180, 5).suffix("°"));
+    private final NumberSetting fov     = add(new NumberSetting("FOV", 60, 5, 180, 5).suffix("\u00b0"));
     private final NumberSetting strength= add(new NumberSetting("Strength", 30, 1, 100, 1).suffix("%"));
     private final BooleanSetting pitch  = add(new BooleanSetting("Vertical", false));
     private final BooleanSetting onlyWhenClicking = add(new BooleanSetting("Only while clicking", true));

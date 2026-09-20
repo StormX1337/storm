@@ -92,7 +92,7 @@ public final class HomePanel extends BasePanel {
 
         boolean launchable = GameDirectories.canLaunchFrom(gameDir, version.id());
         launch.setEnabledState(version.playable() && launchable);
-        launch.setSubLabel(version.id() + "  ·  " + config.username());
+        launch.setSubLabel(version.id() + "  \u00b7  " + config.username());
 
         repaint();
     }
@@ -171,7 +171,7 @@ public final class HomePanel extends BasePanel {
         g.setFont(StormTheme.font(11));
         File gameDir = new File(config.gameDirectory());
         int count = GameDirectories.installedIn(gameDir).size();
-        UiKit.textRight(g, gameDir.getName() + "  ·  " + count + " versions installed",
+        UiKit.textRight(g, gameDir.getName() + "  \u00b7  " + count + " versions installed",
                 right, 64, StormTheme.TEXT_FAINT);
 
         if (!status.isEmpty()) {

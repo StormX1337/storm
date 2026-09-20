@@ -127,7 +127,7 @@ $setup = if ($Sources) { "setupDecompWorkspace" } else { "setupCIWorkspace" }
 Write-Host "running $setup with ${Memory}M of heap"
 Write-Host ""
 
-& .\gradlew.bat $setup --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m"
+& .\gradlew.bat $setup --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "setupDecompWorkspace failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red
@@ -137,7 +137,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-& .\gradlew.bat build --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m"
+& .\gradlew.bat build --no-daemon "-PfgVersion=$ForgeGradle" "-Dorg.gradle.jvmargs=-Xmx${Memory}M -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "build failed, see docs\BRIDGE-BUILD.md" -ForegroundColor Red

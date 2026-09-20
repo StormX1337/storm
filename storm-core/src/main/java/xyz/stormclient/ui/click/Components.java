@@ -106,7 +106,7 @@ public final class Components {
 
         @Override public void render(int mouseX, int mouseY) {
             font().draw(value.name(), x + 4, y + 4, theme().textDim());
-            String text = value.get() + (open ? " ▴" : " ▾");
+            String text = value.get() + (open ? " \u25b4" : " \u25be");
             font().draw(text, x + width - font().width(text) - 6, y + 4, theme().accent());
 
             if (!open) return;

@@ -78,7 +78,7 @@ public final class Panel {
         r.rect(x, y + HEADER - 1, WIDTH, 1, ColorUtil.withAlpha(theme.accent(), 120));
         font.draw(category.icon(), x + 8, y + 6, theme.accent());
         font.draw(category.label(), x + 20, y + 6, theme.text());
-        font.draw(open ? "−" : "+", x + WIDTH - 12, y + 6, theme.textDim());
+        font.draw(open ? "\u2212" : "+", x + WIDTH - 12, y + 6, theme.textDim());
 
         if (bodyHeight <= 0.01) return;
 

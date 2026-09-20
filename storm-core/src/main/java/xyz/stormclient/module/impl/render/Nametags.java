@@ -47,10 +47,10 @@ public class Nametags extends Module {
 
             StringBuilder text = new StringBuilder(EntityUtil.prettyName(e));
             if (health.get()) {
-                text.append(" §7").append((int) Math.ceil(EntityUtil.effectiveHealth(e)));
+                text.append(" \u00a77").append((int) Math.ceil(EntityUtil.effectiveHealth(e)));
             }
             if (distance.get()) {
-                text.append(" §8").append((int) e.distanceTo(player())).append('m');
+                text.append(" \u00a78").append((int) e.distanceTo(player())).append('m');
             }
 
             String label = text.toString();

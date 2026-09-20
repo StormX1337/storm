@@ -65,7 +65,7 @@ public final class HudEditorScreen extends Screen {
             r.rectOutline(x - 1, y - 1, w + 2, h + 2, 1F, outline);
 
             if (isHovered || element == dragged) {
-                font.drawShadow(element.name() + "  §7" + String.format("%.2fx", element.scale()),
+                font.drawShadow(element.name() + "  \u00a77" + String.format("%.2fx", element.scale()),
                         x, y - 11, theme().text());
             }
         }
@@ -84,7 +84,7 @@ public final class HudEditorScreen extends Screen {
         r.rect(0, height - h, width, h, ColorUtil.withAlpha(theme().panel(), 235));
         r.rect(0, height - h, width, 1, ColorUtil.withAlpha(theme().accent(), 150));
 
-        font.draw("drag to move  ·  scroll to scale  ·  right click to toggle  ·  R to reset",
+        font.draw("drag to move  \u00b7  scroll to scale  \u00b7  right click to toggle  \u00b7  R to reset",
                 8, height - h + 7, theme().textDim());
 
         String right = Storm.get().hud().visibleElements().size() + " elements active";

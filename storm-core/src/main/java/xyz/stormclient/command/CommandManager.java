@@ -55,7 +55,7 @@ public final class CommandManager {
         Command command = byName(parts[0]);
         if (command == null) {
             xyz.stormclient.bridge.Bridge.mc().chat().print(
-                    "§cunknown command §f" + parts[0] + "§c, try " + prefix + "help");
+                    "\u00a7cunknown command \u00a7f" + parts[0] + "\u00a7c, try " + prefix + "help");
             return;
         }
         String[] args = new String[parts.length - 1];
@@ -65,7 +65,7 @@ public final class CommandManager {
             command.execute(args);
         } catch (Throwable t) {
             StormLogger.error("command " + command.name() + " failed", t);
-            xyz.stormclient.bridge.Bridge.mc().chat().print("§ccommand failed: " + t);
+            xyz.stormclient.bridge.Bridge.mc().chat().print("\u00a7ccommand failed: " + t);
         }
     }
 }

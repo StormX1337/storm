@@ -9,7 +9,7 @@ import xyz.stormclient.setting.NumberSetting;
 
 public class CustomFov extends Module {
 
-    private final NumberSetting  fov      = add(new NumberSetting("FOV", 90, 30, 160, 1).suffix("°"));
+    private final NumberSetting  fov      = add(new NumberSetting("FOV", 90, 30, 160, 1).suffix("\u00b0"));
     private final BooleanSetting noSprint = add(new BooleanSetting("Static while sprinting", true));
     private final BooleanSetting noBow    = add(new BooleanSetting("Static while aiming", true));
 

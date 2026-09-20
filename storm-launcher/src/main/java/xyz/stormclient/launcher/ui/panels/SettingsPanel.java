@@ -123,7 +123,7 @@ public final class SettingsPanel extends BasePanel {
         for (GameDirectories.Install install : installs) {
             StormButton button = new StormButton(install.launcher, StormButton.Style.GHOST, null);
             button.setSubLabel(install.versions.size() + " versions"
-                    + (install.vanillaLayout ? "" : " · inject only"));
+                    + (install.vanillaLayout ? "" : " \u00b7 inject only"));
             button.setAction(() -> {
                 gameDirField.setText(install.root.getAbsolutePath());
                 config.setGameDirectory(install.root.getAbsolutePath());

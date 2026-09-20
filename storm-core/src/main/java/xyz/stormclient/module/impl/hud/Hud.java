@@ -108,7 +108,7 @@ public class Hud extends HudModule {
 
     private String label(Module module, boolean withTags) {
         String tag = module.tag();
-        return withTags && tag != null && !tag.isEmpty() ? module.name() + " §7" + tag : module.name();
+        return withTags && tag != null && !tag.isEmpty() ? module.name() + " \u00a77" + tag : module.name();
     }
 
     private void renderInfo(IFontRenderer font) {
