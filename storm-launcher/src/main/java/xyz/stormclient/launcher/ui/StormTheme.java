@@ -31,6 +31,9 @@ public final class StormTheme {
     private StormTheme() { }
 
     private static String pickFamily() {
+        String forced = System.getProperty("storm.launcher.font", "");
+        if (!forced.isEmpty()) return forced;
+
         List<String> available = Arrays.asList(
                 GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
         for (String name : PREFERRED) {

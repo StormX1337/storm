@@ -57,7 +57,15 @@ public final class LauncherConfig {
     public String javaPath()           { return get("java", defaultJava()); }
     public void setJavaPath(String v)  { set("java", v); }
 
-    public String gameDirectory()      { return get("gameDir", defaultGameDirectory().getAbsolutePath()); }
+    public String gameDirectory() {
+        String stored = properties.getProperty("gameDir");
+        if (stored != null) return stored;
+
+        // nothing configured yet: use whatever installation actually has versions
+        GameDirectories.Install preferred = GameDirectories.preferred();
+        return preferred != null ? preferred.root.getAbsolutePath()
+                                 : defaultGameDirectory().getAbsolutePath();
+    }
     public void setGameDirectory(String v) { set("gameDir", v); }
 
     public String agentJar()           { return get("agent", new File("storm-agent.jar").getAbsolutePath()); }

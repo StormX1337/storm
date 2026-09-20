@@ -97,6 +97,22 @@ profiles as readable JSON.
 * **Commands** (`.help`) &mdash; toggle, bind, config, friend, hud, theme, panic,
   prefix, say, reset, info.
 
+## Getting the code
+
+```bash
+git clone -b claude/charming-archimedes-400dsx https://github.com/StormX1337/storm.git
+cd storm
+```
+
+From then on `git pull` is all it takes. Without git installed
+(`winget install Git.Git` fixes that), `update.ps1` downloads the current
+branch and replaces the sources in place, leaving `dist\` and `build-out\`
+alone:
+
+```powershell
+.\update.ps1 build
+```
+
 ## Building
 
 You need a **JDK 17 or newer**. Two ways, pick either.

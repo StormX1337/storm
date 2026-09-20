@@ -1,20 +1,22 @@
 package xyz.stormclient.launcher.ui;
 
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RadialGradientPaint;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.awt.geom.RoundRectangle2D;
 
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 import xyz.stormclient.launcher.StormLauncher;
 import xyz.stormclient.launcher.core.LauncherConfig;
@@ -27,12 +29,13 @@ import xyz.stormclient.launcher.ui.panels.SettingsPanel;
 /** The launcher window: frameless, rounded, with its own title bar. */
 public final class LauncherFrame extends JFrame {
 
-    private static final int WIDTH = 1000;
-    private static final int HEIGHT = 640;
+    private static final int WIDTH = 1020;
+    private static final int HEIGHT = 700;
+
+    private static final String[] PAGES = { "home", "inject", "settings", "console", "about" };
 
     private final LauncherConfig config;
-    private final CardLayout cards = new CardLayout();
-    private final JPanel content = new JPanel(cards);
+    private final PageContainer content = new PageContainer();
 
     private final HomePanel home;
     private final InjectPanel inject;
@@ -42,52 +45,48 @@ public final class LauncherFrame extends JFrame {
 
         setTitle(StormLauncher.NAME);
         setSize(WIDTH, HEIGHT);
-        setMinimumSize(new Dimension(880, 560));
+        setMinimumSize(new Dimension(940, 640));
         setLocationRelativeTo(null);
         setUndecorated(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setBackground(new Color(0, 0, 0, 0));
-        setShape(new RoundRectangle2D.Double(0, 0, WIDTH, HEIGHT, 16, 16));
+        setShape(new RoundRectangle2D.Double(0, 0, WIDTH, HEIGHT, 18, 18));
 
         home = new HomePanel(config);
         inject = new InjectPanel(config);
 
-        content.setOpaque(false);
-        content.add(home, "home");
-        content.add(inject, "inject");
-        content.add(new SettingsPanel(config), "settings");
-        content.add(new ConsolePanel(), "console");
-        content.add(new AboutPanel(), "about");
+        content.addPage("home", home);
+        content.addPage("inject", inject);
+        content.addPage("settings", new SettingsPanel(config));
+        content.addPage("console", new ConsolePanel());
+        content.addPage("about", new AboutPanel());
 
         Sidebar sidebar = new Sidebar(
                 new String[] { "Play", "Inject", "Settings", "Console", "About" },
-                new String[] { "▶", "⬇", "⚙", "⌨", "ℹ" },
+                new Icons.Kind[] { Icons.Kind.PLAY, Icons.Kind.INJECT, Icons.Kind.SETTINGS,
+                                   Icons.Kind.CONSOLE, Icons.Kind.INFO },
                 this::onNavigate);
 
-        JPanel root = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics graphics) {
-                Graphics2D g = UiKit.prepare((Graphics2D) graphics.create());
-                g.setColor(StormTheme.BACKGROUND);
-                g.fillRect(0, 0, getWidth(), getHeight());
-                g.setColor(StormTheme.alpha(StormTheme.ACCENT, 12));
-                g.fillOval(getWidth() - 320, -180, 520, 420);
-                g.dispose();
-            }
-        };
-        root.setOpaque(false);
+        JPanel root = new Backdrop();
+        root.setLayout(new BorderLayout());
         root.add(new TitleBar(), BorderLayout.NORTH);
         root.add(sidebar, BorderLayout.WEST);
         root.add(content, BorderLayout.CENTER);
 
         setContentPane(root);
-        cards.show(content, "home");
+        content.show("home");
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 18, 18));
+            }
+        });
     }
 
     private void onNavigate(int index) {
-        String[] names = { "home", "inject", "settings", "console", "about" };
-        cards.show(content, names[index]);
-        if (index == 1) inject.refresh();
+        content.show(PAGES[index]);
         if (index == 0) home.refresh();
+        if (index == 1) inject.refresh();
     }
 
     @Override public void setVisible(boolean visible) {
@@ -95,14 +94,54 @@ public final class LauncherFrame extends JFrame {
         if (visible) home.refresh();
     }
 
+    /** Dark background with two slow moving accent glows. */
+    private static final class Backdrop extends JPanel {
+
+        private float phase;
+
+        Backdrop() {
+            setOpaque(false);
+            new Timer(50, e -> {
+                phase += 0.004F;
+                repaint();
+            }).start();
+        }
+
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = UiKit.prepare((Graphics2D) graphics.create());
+            int w = getWidth(), h = getHeight();
+
+            g.setColor(StormTheme.BACKGROUND);
+            g.fillRect(0, 0, w, h);
+
+            glow(g, w * 0.82 + Math.sin(phase) * 40, h * 0.10 + Math.cos(phase * 0.8) * 26,
+                 w * 0.42, StormTheme.alpha(StormTheme.ACCENT, 34));
+            glow(g, w * 0.18 + Math.cos(phase * 0.7) * 30, h * 0.92 + Math.sin(phase) * 20,
+                 w * 0.34, StormTheme.alpha(new Color(0x7A5CFF), 22));
+
+            g.dispose();
+        }
+
+        private void glow(Graphics2D g, double cx, double cy, double radius, Color color) {
+            if (radius <= 0) return;
+            g.setPaint(new RadialGradientPaint(
+                    new Point2D.Double(cx, cy), (float) radius,
+                    new float[] { 0F, 1F },
+                    new Color[] { color, StormTheme.alpha(color, 0) }));
+            g.fillOval((int) (cx - radius), (int) (cy - radius), (int) (radius * 2), (int) (radius * 2));
+            g.setPaint(null);
+        }
+    }
+
     /** Draggable strip with the window buttons. */
     private final class TitleBar extends JComponent {
 
         private Point grab;
         private int hoveredButton = -1;
+        private float hoverFade;
 
         TitleBar() {
-            setPreferredSize(new Dimension(0, 34));
+            setPreferredSize(new Dimension(0, 36));
 
             addMouseListener(new MouseAdapter() {
                 @Override public void mousePressed(MouseEvent e) {
@@ -133,12 +172,20 @@ public final class LauncherFrame extends JFrame {
                     }
                 }
             });
+
+            new Timer(16, e -> {
+                float target = hoveredButton >= 0 ? 1F : 0F;
+                if (Math.abs(hoverFade - target) > 0.01F) {
+                    hoverFade += (target - hoverFade) * 0.25F;
+                    repaint();
+                }
+            }).start();
         }
 
         private int buttonAt(int x) {
             int w = getWidth();
-            if (x >= w - 38 && x < w - 8) return 1;      // close
-            if (x >= w - 76 && x < w - 46) return 0;     // minimise
+            if (x >= w - 40 && x < w - 8)  return 1;
+            if (x >= w - 80 && x < w - 48) return 0;
             return -1;
         }
 
@@ -148,27 +195,32 @@ public final class LauncherFrame extends JFrame {
 
             g.setColor(StormTheme.SIDEBAR);
             g.fillRect(0, 0, w, h);
+            g.setColor(StormTheme.alpha(StormTheme.OUTLINE, 90));
+            g.fillRect(0, h - 1, w, 1);
 
-            g.setFont(StormTheme.font(12));
-            UiKit.text(g, StormLauncher.NAME, 14, 21, StormTheme.TEXT_FAINT);
+            g.setFont(StormTheme.font(11));
+            UiKit.text(g, StormLauncher.NAME, 16, 23, StormTheme.TEXT_FAINT);
 
-            drawButton(g, w - 76, hoveredButton == 0, false);
-            drawButton(g, w - 38, hoveredButton == 1, true);
+            button(g, w - 80, hoveredButton == 0, false);
+            button(g, w - 40, hoveredButton == 1, true);
             g.dispose();
         }
 
-        private void drawButton(Graphics2D g, int x, boolean hovered, boolean close) {
+        private void button(Graphics2D g, int x, boolean hovered, boolean close) {
             if (hovered) {
-                g.setColor(close ? StormTheme.alpha(StormTheme.RED, 60) : StormTheme.PANEL_HI);
-                g.fillRoundRect(x, 4, 30, 26, 7, 7);
+                UiKit.fillRound(g, x, 5, 32, 26, 8,
+                        close ? StormTheme.alpha(StormTheme.RED, (int) (70 * hoverFade))
+                              : StormTheme.alpha(StormTheme.PANEL_HI, (int) (255 * hoverFade)));
             }
             Color color = hovered ? (close ? StormTheme.RED : StormTheme.TEXT) : StormTheme.TEXT_DIM;
             g.setColor(color);
+            g.setStroke(new java.awt.BasicStroke(1.4F, java.awt.BasicStroke.CAP_ROUND,
+                    java.awt.BasicStroke.JOIN_ROUND));
             if (close) {
-                g.drawLine(x + 11, 13, x + 19, 21);
-                g.drawLine(x + 19, 13, x + 11, 21);
+                g.drawLine(x + 12, 13, x + 20, 22);
+                g.drawLine(x + 20, 13, x + 12, 22);
             } else {
-                g.drawLine(x + 11, 17, x + 19, 17);
+                g.drawLine(x + 12, 18, x + 20, 18);
             }
         }
     }

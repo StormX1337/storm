@@ -1,14 +1,18 @@
 package xyz.stormclient.launcher.ui.panels;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics2D;
+import java.io.File;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import xyz.stormclient.launcher.core.GameDirectories;
 import xyz.stormclient.launcher.core.GameLauncher;
 import xyz.stormclient.launcher.core.Injector;
 import xyz.stormclient.launcher.core.LauncherConfig;
@@ -16,54 +20,81 @@ import xyz.stormclient.launcher.core.Log;
 import xyz.stormclient.launcher.core.MinecraftVersion;
 import xyz.stormclient.launcher.core.ProfileInstaller;
 import xyz.stormclient.launcher.core.VersionRegistry;
+import xyz.stormclient.launcher.ui.Icons;
 import xyz.stormclient.launcher.ui.StormButton;
 import xyz.stormclient.launcher.ui.StormTheme;
 import xyz.stormclient.launcher.ui.UiKit;
-
-import java.io.File;
 
 /** Version picker plus the launch button. */
 public final class HomePanel extends BasePanel {
 
     private final LauncherConfig config;
     private final VersionGrid grid;
+    private final StatusCard statusCard;
     private final StormButton launch;
     private final StormButton profile;
+
+    private String status = "";
+    private Color statusColor = StormTheme.TEXT_FAINT;
 
     public HomePanel(LauncherConfig config) {
         super("Play", "Pick a version, Storm attaches itself while the game starts");
         this.config = config;
 
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(headerHeight() + 16, 30, 24, 30));
+        setBorder(BorderFactory.createEmptyBorder(headerHeight() + 18, 30, 24, 30));
 
         grid = new VersionGrid(config.version(), this::onVersionSelected);
         JPanel gridHolder = new JPanel(new BorderLayout());
         gridHolder.setOpaque(false);
-        gridHolder.add(grid, BorderLayout.CENTER);
-        add(gridHolder, BorderLayout.CENTER);
+        gridHolder.add(grid, BorderLayout.NORTH);
+        add(gridHolder, BorderLayout.NORTH);
+
+        statusCard = new StatusCard(config);
 
         launch = new StormButton("LAUNCH", StormButton.Style.PRIMARY, this::onLaunch);
-        launch.setPreferredSize(new Dimension(190, 46));
+        launch.setIcon(Icons.Kind.PLAY);
+        launch.setPreferredSize(new Dimension(200, 48));
 
         profile = new StormButton("Add to official launcher", StormButton.Style.GHOST, this::onInstallProfile);
-        profile.setPreferredSize(new Dimension(210, 46));
+        profile.setPreferredSize(new Dimension(216, 48));
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
-        actions.setPreferredSize(new Dimension(0, 60));
+        actions.setPreferredSize(new Dimension(0, 66));
         actions.add(profile);
         actions.add(launch);
-        add(actions, BorderLayout.SOUTH);
+
+        // status card and buttons share the bottom, so the card can never be
+        // squeezed out by however many rows of version cards there are
+        JPanel bottom = new JPanel(new BorderLayout(0, 10));
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
+        bottom.add(statusCard, BorderLayout.CENTER);
+        bottom.add(actions, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
 
         refresh();
     }
 
     public void refresh() {
         MinecraftVersion version = VersionRegistry.byId(config.version());
+        File gameDir = new File(config.gameDirectory());
+
+        Set<String> installed = GameDirectories.installedIn(gameDir);
+        grid.setInstalled(installed);
+        if (statusCard != null) statusCard.refresh();
+
+        boolean launchable = GameDirectories.canLaunchFrom(gameDir, version.id());
+        launch.setEnabledState(version.playable() && launchable);
         launch.setSubLabel(version.id() + "  ·  " + config.username());
-        launch.setEnabledState(version.playable());
+
         repaint();
+    }
+
+    private void setStatus(String text, Color color) {
+        this.status = text;
+        this.statusColor = color;
     }
 
     private void onVersionSelected(MinecraftVersion version) {
@@ -87,21 +118,27 @@ public final class HomePanel extends BasePanel {
         options.agentOptions = Injector.buildOptions(version.id(), config.configProfile(),
                 options.bridgeJar, config.debug());
 
-        launch.setEnabledState(false);
-        launch.setSubLabel("starting...");
+        launch.setLoading(true);
+        setStatus("starting " + version.id() + "...", StormTheme.TEXT_DIM);
+        repaint();
 
         new Thread(() -> {
             try {
                 GameLauncher.launch(options, Log::info);
                 SwingUtilities.invokeLater(() -> {
+                    launch.setLoading(false);
                     launch.setSubLabel("running");
+                    setStatus("game started", StormTheme.GREEN);
+                    repaint();
                     if (config.closeOnLaunch()) System.exit(0);
                 });
             } catch (Exception e) {
                 Log.error("launch failed", e);
                 SwingUtilities.invokeLater(() -> {
-                    launch.setEnabledState(true);
-                    launch.setSubLabel(e.getMessage() == null ? "failed" : shorten(e.getMessage()));
+                    launch.setLoading(false);
+                    refresh();
+                    setStatus(e.getMessage() == null ? "launch failed" : e.getMessage(), StormTheme.RED);
+                    repaint();
                 });
             }
         }, "Storm-Launch").start();
@@ -114,20 +151,39 @@ public final class HomePanel extends BasePanel {
         String options = Injector.buildOptions(version.id(), config.configProfile(), bridge, config.debug());
 
         boolean ok = ProfileInstaller.install(new File(config.gameDirectory()), version.id(), agent, options);
-        profile.setSubLabel(ok ? "profile written" : "could not write profile");
-    }
-
-    private String shorten(String message) {
-        return message.length() > 46 ? message.substring(0, 43) + "..." : message;
+        setStatus(ok ? "profile written into the official launcher" : "could not write the profile",
+                ok ? StormTheme.GREEN : StormTheme.RED);
+        repaint();
     }
 
     @Override protected void paintBody(Graphics2D g) {
-        g.setFont(StormTheme.font(12));
-        String hint = Injector.available()
-                ? "attach API ready"
-                : "no attach API - run the launcher with a JDK to use injection";
-        UiKit.textRight(g, hint, getWidth() - 30, 44,
-                Injector.available() ? StormTheme.GREEN : StormTheme.AMBER);
-        UiKit.textRight(g, config.gameDirectory(), getWidth() - 30, 63, StormTheme.TEXT_FAINT);
+        int right = getWidth() - 30;
+
+        boolean attach = Injector.available();
+        String attachText = attach ? "attach API ready" : "no attach API, use a JDK";
+        chip(g, right, 30, attachText, attach ? StormTheme.GREEN : StormTheme.AMBER);
+
+        g.setFont(StormTheme.font(11));
+        File gameDir = new File(config.gameDirectory());
+        int count = GameDirectories.installedIn(gameDir).size();
+        UiKit.textRight(g, gameDir.getName() + "  ·  " + count + " versions installed",
+                right, 64, StormTheme.TEXT_FAINT);
+
+        if (!status.isEmpty()) {
+            g.setFont(StormTheme.font(12));
+            UiKit.text(g, status, 30, getHeight() - 24, statusColor);
+        }
+    }
+
+    /** Small rounded pill with a status dot. */
+    private void chip(Graphics2D g, double right, double y, String text, Color color) {
+        g.setFont(StormTheme.font(11));
+        double textWidth = g.getFontMetrics().stringWidth(text);
+        double width = textWidth + 30;
+        double x = right - width;
+
+        UiKit.fillRound(g, x, y, width, 22, 11, StormTheme.alpha(color, 26));
+        UiKit.statusDot(g, x + 10, y + 8, 6, color);
+        UiKit.text(g, text, x + 24, y + 15, color);
     }
 }

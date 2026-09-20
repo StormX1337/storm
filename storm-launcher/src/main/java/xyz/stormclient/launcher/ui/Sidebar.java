@@ -14,27 +14,29 @@ import javax.swing.Timer;
 
 import xyz.stormclient.launcher.StormLauncher;
 
-/** Left hand navigation with an animated selection pill. */
+/** Left hand navigation. The selection pill slides, hovered rows fade in. */
 public final class Sidebar extends JComponent {
 
-    public static final int WIDTH = 188;
+    public static final int WIDTH = 196;
 
-    private static final int ITEM_HEIGHT = 40;
-    private static final int TOP = 92;
+    private static final int ITEM_HEIGHT = 44;
+    private static final int TOP = 104;
 
     private final String[] items;
-    private final String[] icons;
+    private final Icons.Kind[] icons;
     private final Consumer<Integer> onSelect;
+    private final float[] hover;
 
     private int selected;
-    private int hovered = -1;
-    private float pillY;
+    private int hoveredIndex = -1;
+    private float pillY = TOP;
+    private float pillScale = 1F;
 
-    public Sidebar(String[] items, String[] icons, Consumer<Integer> onSelect) {
+    public Sidebar(String[] items, Icons.Kind[] icons, Consumer<Integer> onSelect) {
         this.items = items;
         this.icons = icons;
         this.onSelect = onSelect;
-        this.pillY = TOP;
+        this.hover = new float[items.length];
 
         setPreferredSize(new Dimension(WIDTH, 0));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -42,26 +44,40 @@ public final class Sidebar extends JComponent {
         addMouseListener(new MouseAdapter() {
             @Override public void mousePressed(MouseEvent e) {
                 int index = indexAt(e.getY());
-                if (index >= 0) select(index);
+                if (index >= 0) {
+                    pillScale = 0.94F;
+                    select(index);
+                }
             }
-            @Override public void mouseExited(MouseEvent e) { hovered = -1; repaint(); }
+            @Override public void mouseExited(MouseEvent e) { hoveredIndex = -1; }
         });
         addMouseMotionListener(new MouseAdapter() {
-            @Override public void mouseMoved(MouseEvent e) {
-                int index = indexAt(e.getY());
-                if (index != hovered) { hovered = index; repaint(); }
-            }
+            @Override public void mouseMoved(MouseEvent e) { hoveredIndex = indexAt(e.getY()); }
         });
 
         new Timer(16, e -> {
+            boolean dirty = false;
+
             float target = TOP + selected * ITEM_HEIGHT;
-            if (Math.abs(pillY - target) > 0.4F) {
-                pillY += (target - pillY) * 0.25F;
-                repaint();
+            if (Math.abs(pillY - target) > 0.3F) {
+                pillY += (target - pillY) * 0.28F;
+                dirty = true;
             } else if (pillY != target) {
                 pillY = target;
-                repaint();
+                dirty = true;
             }
+            if (pillScale < 1F) {
+                pillScale = Math.min(1F, pillScale + 0.02F);
+                dirty = true;
+            }
+            for (int i = 0; i < hover.length; i++) {
+                float want = i == hoveredIndex ? 1F : 0F;
+                if (Math.abs(hover[i] - want) > 0.01F) {
+                    hover[i] += (want - hover[i]) * 0.22F;
+                    dirty = true;
+                }
+            }
+            if (dirty) repaint();
         }).start();
     }
 
@@ -85,36 +101,49 @@ public final class Sidebar extends JComponent {
 
         g.setColor(StormTheme.SIDEBAR);
         g.fillRect(0, 0, WIDTH, h);
-        g.setColor(StormTheme.alpha(StormTheme.OUTLINE, 120));
+        g.setColor(StormTheme.alpha(StormTheme.OUTLINE, 110));
         g.fillRect(WIDTH - 1, 0, 1, h);
 
-        // logo block
-        UiKit.bolt(g, 22, 30, 26, StormTheme.ACCENT);
-        g.setFont(StormTheme.bold(21));
-        UiKit.text(g, "STORM", 58, 45, StormTheme.TEXT);
-        g.setFont(StormTheme.font(11));
-        UiKit.text(g, "LAUNCHER " + StormLauncher.VERSION, 58, 59, StormTheme.TEXT_FAINT);
-
-        // selection pill
+        // ---- brand -------------------------------------------------
         g.setColor(StormTheme.alpha(StormTheme.ACCENT, 26));
-        g.fillRoundRect(10, (int) pillY + 3, WIDTH - 24, ITEM_HEIGHT - 6, 9, 9);
-        g.setColor(StormTheme.ACCENT);
-        g.fillRoundRect(10, (int) pillY + 10, 3, ITEM_HEIGHT - 20, 3, 3);
+        g.fillOval(10, 22, 44, 44);
+        UiKit.bolt(g, 22, 30, 24, StormTheme.ACCENT);
 
+        g.setFont(StormTheme.bold(22));
+        UiKit.text(g, "STORM", 64, 48, StormTheme.TEXT);
+        g.setFont(StormTheme.font(10));
+        UiKit.text(g, "LAUNCHER " + StormLauncher.VERSION, 64, 62, StormTheme.TEXT_FAINT);
+
+        g.setColor(StormTheme.alpha(StormTheme.OUTLINE, 90));
+        g.fillRect(20, 84, WIDTH - 44, 1);
+
+        // ---- selection pill ----------------------------------------
+        double pillHeight = (ITEM_HEIGHT - 8) * pillScale;
+        double pillOffset = (ITEM_HEIGHT - 8 - pillHeight) / 2;
+        UiKit.fillRound(g, 12, pillY + 4 + pillOffset, WIDTH - 28, pillHeight, 10,
+                StormTheme.alpha(StormTheme.ACCENT, 28));
+        UiKit.fillRound(g, 12, pillY + 13, 3, ITEM_HEIGHT - 26, 2, StormTheme.ACCENT);
+
+        // ---- items --------------------------------------------------
         for (int i = 0; i < items.length; i++) {
             int y = TOP + i * ITEM_HEIGHT;
             boolean active = i == selected;
-            Color color = active ? StormTheme.TEXT
-                        : i == hovered ? StormTheme.mix(StormTheme.TEXT_DIM, StormTheme.TEXT, 0.6F)
-                        : StormTheme.TEXT_DIM;
+            float hovered = hover[i];
 
-            g.setFont(StormTheme.font(15));
-            UiKit.text(g, icons[i], 26, y + 25, active ? StormTheme.ACCENT : color);
+            Color color = active
+                    ? StormTheme.TEXT
+                    : StormTheme.mix(StormTheme.TEXT_DIM, StormTheme.TEXT, hovered);
+            Color iconColor = active
+                    ? StormTheme.ACCENT
+                    : StormTheme.mix(StormTheme.TEXT_DIM, StormTheme.ACCENT, hovered * 0.6F);
+
+            Icons.draw(g, icons[i], 28 + hovered * 2, y + 13, 18, iconColor);
+
             g.setFont(active ? StormTheme.bold(14) : StormTheme.font(14));
-            UiKit.text(g, items[i], 50, y + 25, color);
+            UiKit.text(g, items[i], 58 + hovered * 2, y + 27, color);
         }
 
-        g.setFont(StormTheme.font(11));
+        g.setFont(StormTheme.font(10));
         UiKit.text(g, "own build · no third party code", 20, h - 20, StormTheme.TEXT_FAINT);
         g.dispose();
     }

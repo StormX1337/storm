@@ -24,6 +24,9 @@ public class StormButton extends JComponent {
     private boolean pressed;
     private boolean enabledState = true;
     private String subLabel = "";
+    private boolean loading;
+    private Icons.Kind icon;
+    private boolean hovered;
 
     public StormButton(String label, Style style, Runnable action) {
         this.label = label;
@@ -34,20 +37,21 @@ public class StormButton extends JComponent {
         setPreferredSize(new Dimension(150, 38));
 
         Timer timer = new Timer(16, e -> {
+            if (loading) { repaint(); return; }
+
             float target = isHovered() && enabledState ? 1F : 0F;
-            float speed = 0.16F;
             if (Math.abs(hover - target) < 0.01F) {
                 hover = target;
             } else {
-                hover += (target - hover) * speed;
+                hover += (target - hover) * 0.16F;
                 repaint();
             }
         });
         timer.start();
 
         addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { repaint(); }
-            @Override public void mouseExited(MouseEvent e)  { pressed = false; repaint(); }
+            @Override public void mouseEntered(MouseEvent e) { hovered = true; repaint(); }
+            @Override public void mouseExited(MouseEvent e)  { hovered = false; pressed = false; repaint(); }
             @Override public void mousePressed(MouseEvent e) { pressed = enabledState; repaint(); }
             @Override public void mouseReleased(MouseEvent e) {
                 if (pressed && enabledState && StormButton.this.action != null) StormButton.this.action.run();
@@ -58,6 +62,20 @@ public class StormButton extends JComponent {
     }
 
     public void setAction(Runnable action) { this.action = action; }
+
+    public void setIcon(Icons.Kind icon) {
+        this.icon = icon;
+        repaint();
+    }
+
+    /** Swaps the label for a spinner while something is running. */
+    public void setLoading(boolean loading) {
+        this.loading = loading;
+        setEnabledState(!loading);
+        repaint();
+    }
+
+    public boolean loading() { return loading; }
 
     public void setSubLabel(String subLabel) {
         this.subLabel = subLabel == null ? "" : subLabel;
@@ -72,9 +90,12 @@ public class StormButton extends JComponent {
 
     public boolean enabledState() { return enabledState; }
 
-    private boolean isHovered() {
-        return getMousePosition() != null;
-    }
+    /**
+     * Tracked through enter and exit rather than asking for the pointer every
+     * frame: getMousePosition costs a round trip and throws when there is no
+     * display at all.
+     */
+    private boolean isHovered() { return hovered; }
 
     @Override protected void paintComponent(Graphics graphics) {
         Graphics2D g = UiKit.prepare((Graphics2D) graphics.create());
@@ -113,11 +134,25 @@ public class StormButton extends JComponent {
                     StormTheme.mix(StormTheme.OUTLINE, StormTheme.ACCENT, t));
         }
 
+        if (loading) {
+            Icons.spinner(g, w / 2.0 - 11, h / 2.0 - 11, 22, textColor);
+            g.dispose();
+            return;
+        }
+
+        double iconWidth = icon == null ? 0 : 24;
         g.setFont(StormTheme.bold(subLabel.isEmpty() ? 14 : 15));
+        double labelWidth = g.getFontMetrics().stringWidth(label);
+        double contentLeft = (w - labelWidth - iconWidth) / 2.0;
+
+        if (icon != null) {
+            Icons.draw(g, icon, contentLeft, h / 2.0 - 8 + offset - (subLabel.isEmpty() ? 0 : 6), 16, textColor);
+        }
+
         if (subLabel.isEmpty()) {
-            UiKit.textCenter(g, label, w / 2.0, h / 2.0 + 5 + offset, textColor);
+            UiKit.text(g, label, contentLeft + iconWidth, h / 2.0 + 5 + offset, textColor);
         } else {
-            UiKit.textCenter(g, label, w / 2.0, h / 2.0 + offset, textColor);
+            UiKit.text(g, label, contentLeft + iconWidth, h / 2.0 + offset, textColor);
             g.setFont(StormTheme.font(11));
             UiKit.textCenter(g, subLabel, w / 2.0, h / 2.0 + 14 + offset, StormTheme.alpha(textColor, 170));
         }

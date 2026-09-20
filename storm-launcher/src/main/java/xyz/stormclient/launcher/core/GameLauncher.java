@@ -46,8 +46,7 @@ public final class GameLauncher {
         File versionDir = new File(options.gameDir, "versions/" + options.version);
         File manifest = new File(versionDir, options.version + ".json");
         if (!manifest.isFile()) {
-            throw new IllegalStateException("version " + options.version
-                    + " is not installed, run it once in the official launcher first");
+            throw new IllegalStateException(describeMissing(options));
         }
 
         Map<String, Object> json = Json.readObject(
@@ -90,6 +89,29 @@ public final class GameLauncher {
         Process process = builder.start();
         pipe(process, output);
         return process;
+    }
+
+    /**
+     * A missing version is almost always a third party launcher keeping its
+     * files somewhere else, so say where it actually is instead of assuming
+     * the user never installed it.
+     */
+    private static String describeMissing(Options options) {
+        java.util.Set<String> here = GameDirectories.installedIn(options.gameDir);
+        String elsewhere = GameDirectories.describeAlternatives(options.version);
+
+        if (!elsewhere.isEmpty()) {
+            return options.version + " is installed in " + elsewhere
+                    + ", not in " + options.gameDir.getName()
+                    + ". Point the game directory there in Settings, or start it in that"
+                    + " launcher and use Inject.";
+        }
+        if (here.isEmpty()) {
+            return "no Minecraft versions found in " + options.gameDir
+                    + ". Set the game directory in Settings.";
+        }
+        return options.version + " is not installed in " + options.gameDir.getName()
+                + ". Found: " + String.join(", ", here);
     }
 
     private static void pipe(Process process, Consumer<String> output) {

@@ -50,9 +50,14 @@ public final class InjectPanel extends BasePanel {
         add(list, BorderLayout.CENTER);
 
         injectButton = new StormButton("INJECT", StormButton.Style.PRIMARY, this::onInject);
-        injectButton.setPreferredSize(new Dimension(180, 46));
+        injectButton.setIcon(xyz.stormclient.launcher.ui.Icons.Kind.INJECT);
+        injectButton.setPreferredSize(new Dimension(190, 48));
+        injectButton.setEnabledState(false);
+        injectButton.setSubLabel("nothing selected");
+
         refreshButton = new StormButton("Rescan", StormButton.Style.GHOST, this::refresh);
-        refreshButton.setPreferredSize(new Dimension(130, 46));
+        refreshButton.setIcon(xyz.stormclient.launcher.ui.Icons.Kind.REFRESH);
+        refreshButton.setPreferredSize(new Dimension(150, 48));
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
