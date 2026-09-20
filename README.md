@@ -191,18 +191,22 @@ rm -rf ~/.gradle/wrapper/dists/gradle-8.14.3-bin
 
 Or skip Gradle entirely and use `build.ps1` / `build.sh`.
 
-**The stack trace ends in `Method.java:498`**
+**`javac 1.8.0_...`, or a stack trace ending in `Method.java:498`**
 
-That line number only exists in Java 8, so Gradle is running on a JDK 8. The
-launcher needs JDK 17+. Install one and point `JAVA_HOME` at it:
+Both mean a JDK 8. Storm needs JDK 17 or newer. `build.ps1` searches the usual
+install locations and picks the newest JDK it finds, so often there is already
+one on the machine and nothing needs doing. If it reports nothing recent:
 
 ```powershell
-$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21"
-& "$env:JAVA_HOME\bin\java" -version
+winget install EclipseAdoptium.Temurin.21.JDK
 ```
 
-Make it permanent under *System Properties &rarr; Environment Variables*, or
-just use the build script, which picks `JAVA_HOME` up the same way.
+Then open a **new** terminal, or point the current one at it:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot"
+.\build.ps1 test
+```
 
 **The launcher says "no attach API"**
 

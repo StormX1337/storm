@@ -22,17 +22,22 @@ JAR="${JAVA_HOME:+$JAVA_HOME/bin/}jar"
 
 command -v "$JAVAC" >/dev/null 2>&1 || { echo "javac not found. Install a JDK or set JAVA_HOME."; exit 1; }
 
-VERSION=$("$JAVAC" -version 2>&1 | sed -E 's/javac ([0-9]+).*/\1/')
+# "javac 1.8.0_504" and "javac 21.0.10" both have to land on a plain number
+RAW=$("$JAVAC" -version 2>&1 | grep -oE 'javac [0-9][0-9._]*' | head -1 | awk '{print $2}')
+VERSION=${RAW%%.*}
+if [ "$VERSION" = "1" ]; then VERSION=$(echo "$RAW" | cut -d. -f2); fi
+case "$VERSION" in
+    ''|*[!0-9]*) echo "could not read the javac version from: $RAW"; exit 1 ;;
+esac
 echo "using JDK $VERSION  ($JAVAC)"
 
 if [ "$VERSION" -lt 17 ]; then
     echo
-    echo "  The launcher needs JDK 17 or newer. Found $VERSION."
-    echo "  Core and agent will still be built."
+    echo "  This build needs JDK 17 or newer, this one is $VERSION."
+    echo "  Point JAVA_HOME at a current JDK and run again:"
+    echo "    export JAVA_HOME=/path/to/jdk-21"
     echo
-    BUILD_LAUNCHER=0
-else
-    BUILD_LAUNCHER=1
+    exit 1
 fi
 
 rm -rf "$OUT" "$DIST"
@@ -59,17 +64,13 @@ cp -r "$OUT/core/." "$OUT/agent/"
 "$JAR" --create --file "$DIST/storm-agent.jar" --manifest "$OUT/agent-manifest.txt" -C "$OUT/agent" .
 
 # ---- storm-launcher -----------------------------------------------
-if [ "$BUILD_LAUNCHER" = "1" ]; then
-    echo "[3/4] storm-launcher"
-    find "$ROOT/storm-launcher/src/main/java" -name '*.java' > "$OUT/launcher.txt"
-    "$JAVAC" --release 17 -nowarn -cp "$OUT/core" -d "$OUT/launcher" @"$OUT/launcher.txt"
+echo "[3/4] storm-launcher"
+find "$ROOT/storm-launcher/src/main/java" -name '*.java' > "$OUT/launcher.txt"
+"$JAVAC" --release 17 -nowarn -cp "$OUT/core" -d "$OUT/launcher" @"$OUT/launcher.txt"
 
-    cp -r "$OUT/core/." "$OUT/launcher/"
-    "$JAR" --create --file "$DIST/storm-launcher.jar" \
-           --main-class xyz.stormclient.launcher.StormLauncher -C "$OUT/launcher" .
-else
-    echo "[3/4] storm-launcher  SKIPPED (needs JDK 17+)"
-fi
+cp -r "$OUT/core/." "$OUT/launcher/"
+"$JAR" --create --file "$DIST/storm-launcher.jar" \
+       --main-class xyz.stormclient.launcher.StormLauncher -C "$OUT/launcher" .
 
 # ---- smoke test ---------------------------------------------------
 if [ "${1:-}" = "test" ]; then
