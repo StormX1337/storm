@@ -2,7 +2,9 @@ package xyz.stormclient;
 
 import java.io.File;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 import xyz.stormclient.bridge.Bridge;
 import xyz.stormclient.bridge.IEntity;
@@ -16,10 +18,16 @@ import xyz.stormclient.event.events.AttackEvent;
 import xyz.stormclient.event.events.MouseEvent;
 import xyz.stormclient.event.events.TickEvent;
 import xyz.stormclient.event.events.WorldEvent;
+import xyz.stormclient.licence.Licence;
+import xyz.stormclient.licence.LicenceVerifier;
 import xyz.stormclient.module.Module;
 import xyz.stormclient.module.ModuleManager;
 import xyz.stormclient.module.impl.combat.AntiBot;
 import xyz.stormclient.rotation.RotationManager;
+import xyz.stormclient.setting.BooleanSetting;
+import xyz.stormclient.setting.NumberSetting;
+import xyz.stormclient.setting.Setting;
+import xyz.stormclient.setting.StringSetting;
 import xyz.stormclient.social.FriendManager;
 import xyz.stormclient.ui.hud.HudManager;
 import xyz.stormclient.ui.notify.Notification;
@@ -45,6 +53,18 @@ public final class Storm {
     private final Theme theme = new Theme();
 
     private ConfigManager config;
+    private Licence licence = LicenceVerifier.verify(null);
+
+    // client wide options, shown on the menu's settings page
+    private final List<Setting<?>> settings = new ArrayList<Setting<?>>();
+    private final StringSetting  prefix        = new StringSetting("Command prefix", ".")
+            .describe("What a chat message has to start with to reach Storm");
+    private final BooleanSetting notifications0 = new BooleanSetting("Notifications", true)
+            .describe("Show a card when a module is toggled");
+    private final NumberSetting  notifyTime    = new NumberSetting("Notification time", 2500, 500, 8000, 250)
+            .describe("How long a card stays on screen");
+    private final BooleanSetting hudInMenu     = new BooleanSetting("HUD in menus", true)
+            .describe("Keep drawing the HUD while a Storm screen is open");
 
     private final Deque<Long> leftClicks = new ArrayDeque<Long>();
     private final Deque<Long> rightClicks = new ArrayDeque<Long>();
@@ -53,7 +73,15 @@ public final class Storm {
     private long lastAttackTime;
     private boolean initialised;
 
-    private Storm() { }
+    private Storm() {
+        settings.add(prefix);
+        settings.add(notifications0);
+        settings.add(notifyTime);
+        settings.add(hudInMenu);
+        prefix.onChange(() -> commands.setPrefix(prefix.get()));
+        notifications0.onChange(() -> notifications.setEnabled(notifications0.get()));
+        notifyTime.onChange(() -> notifications.setDefaultDuration(notifyTime.getLong()));
+    }
 
     public static Storm get() {
         if (instance == null) instance = new Storm();
@@ -72,11 +100,30 @@ public final class Storm {
         long began = System.currentTimeMillis();
         initialised = true;
 
+        // the launcher hands the blob down as a system property, so both the
+        // agent path and a plain mod install end up here
+        licence = LicenceVerifier.verify(System.getProperty("storm.licence"));
+
         IMinecraft mc = Bridge.mc();
         StormLogger.info(StormInfo.FULL_NAME + " " + StormInfo.VERSION + " starting on " + mc.version().id());
 
         File gameDirectory = mc.gameDirectory();
         config = new ConfigManager(gameDirectory);
+
+        if (!licence.valid()) {
+            StormLogger.error("licence rejected: " + licence.reason());
+            commands.init();
+            bus.register(this);
+            bus.register(commands);
+            bus.register(notifications);
+            notifications.push(new Notification(StormInfo.NAME,
+                    licence.reason(), Notification.Type.ERROR, 10000));
+            StormLogger.info("running without modules until a valid key is supplied");
+            return;
+        }
+        if (LicenceVerifier.enforced()) {
+            StormLogger.info("licence ok for " + licence.holder() + " (" + licence.statusLine() + ")");
+        }
 
         modules.init();
         commands.init();
@@ -122,6 +169,9 @@ public final class Storm {
     public RotationManager rotations()        { return rotations; }
     public Theme theme()                      { return theme; }
     public ConfigManager config()             { return config; }
+    public Licence licence()                  { return licence; }
+    public List<Setting<?>> settings()        { return settings; }
+    public boolean drawHudInMenus()           { return hudInMenu.get(); }
 
     public AntiBot antiBot() { return modules.get(AntiBot.class); }
 

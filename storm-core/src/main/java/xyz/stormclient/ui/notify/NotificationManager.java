@@ -23,21 +23,31 @@ public final class NotificationManager {
 
     private final List<Notification> notifications = new CopyOnWriteArrayList<Notification>();
 
+    private boolean enabled = true;
+    private long defaultDuration = 2500;
+
+    /** Turned off from the menu's settings page. */
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setDefaultDuration(long millis) { this.defaultDuration = millis; }
+    public long defaultDuration() { return defaultDuration; }
+
     public void push(Notification notification) {
+        if (!enabled) return;
         notifications.add(notification);
         while (notifications.size() > 16) notifications.remove(0);
     }
 
     public void push(String title, String message) {
-        push(new Notification(title, message, Notification.Type.INFO, 2500));
+        push(new Notification(title, message, Notification.Type.INFO, defaultDuration));
     }
 
     public void success(String title, String message) {
-        push(new Notification(title, message, Notification.Type.SUCCESS, 2500));
+        push(new Notification(title, message, Notification.Type.SUCCESS, defaultDuration));
     }
 
     public void error(String title, String message) {
-        push(new Notification(title, message, Notification.Type.ERROR, 4000));
+        push(new Notification(title, message, Notification.Type.ERROR,
+                Math.max(4000, defaultDuration)));
     }
 
     public List<Notification> visible() {

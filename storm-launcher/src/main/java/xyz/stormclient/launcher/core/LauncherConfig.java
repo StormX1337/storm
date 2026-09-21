@@ -96,6 +96,10 @@ public final class LauncherConfig {
     public boolean closeOnLaunch()          { return getBool("closeOnLaunch", false); }
     public void setCloseOnLaunch(boolean v) { set("closeOnLaunch", String.valueOf(v)); }
 
+    /** The signed licence blob, handed to the game as a system property. */
+    public String licence()                 { return get("licence", ""); }
+    public void setLicence(String v)        { set("licence", v == null ? "" : v.trim()); }
+
     // ------------------------------------------------------------------
     private String get(String key, String fallback) { return properties.getProperty(key, fallback); }
     private void set(String key, String value)      { properties.setProperty(key, value); }

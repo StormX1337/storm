@@ -85,10 +85,14 @@ if [ "${1:-}" = "test" ] || [ "${1:-}" = "preview" ]; then
     # paints the real menu into a PNG, so its layout can be checked without a game
     if [ "${1:-}" = "preview" ]; then
         mkdir -p "$ROOT/preview"
+        for page in Combat Theme Settings Configs Keybinds Licence; do
+            "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.GuiPreview \
+                    960 540 "$ROOT/preview/menu-$page.png" "menu:$page"
+        done
         for size in "960 540" "480 270"; do
             set -- $size
             "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.GuiPreview \
-                    "$1" "$2" "$ROOT/preview/clickgui-$1x$2.png"
+                    "$1" "$2" "$ROOT/preview/panels-$1x$2.png" panels
         done
         "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.GuiPreview \
                 960 540 "$ROOT/preview/hud-960x540.png" hud

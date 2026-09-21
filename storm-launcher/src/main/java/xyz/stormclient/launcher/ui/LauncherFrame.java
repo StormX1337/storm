@@ -24,6 +24,7 @@ import xyz.stormclient.launcher.ui.panels.AboutPanel;
 import xyz.stormclient.launcher.ui.panels.ConsolePanel;
 import xyz.stormclient.launcher.ui.panels.HomePanel;
 import xyz.stormclient.launcher.ui.panels.InjectPanel;
+import xyz.stormclient.launcher.ui.panels.LicencePanel;
 import xyz.stormclient.launcher.ui.panels.SettingsPanel;
 
 /** The launcher window: frameless, rounded, with its own title bar. */
@@ -32,13 +33,15 @@ public final class LauncherFrame extends JFrame {
     private static final int WIDTH = 1020;
     private static final int HEIGHT = 700;
 
-    private static final String[] PAGES = { "home", "inject", "settings", "console", "about" };
+    private static final String[] PAGES =
+            { "home", "inject", "licence", "settings", "console", "about" };
 
     private final LauncherConfig config;
     private final PageContainer content = new PageContainer();
 
     private final HomePanel home;
     private final InjectPanel inject;
+    private final LicencePanel licence;
 
     public LauncherFrame(LauncherConfig config) {
         this.config = config;
@@ -54,17 +57,19 @@ public final class LauncherFrame extends JFrame {
 
         home = new HomePanel(config);
         inject = new InjectPanel(config);
+        licence = new LicencePanel(config);
 
         content.addPage("home", home);
         content.addPage("inject", inject);
+        content.addPage("licence", licence);
         content.addPage("settings", new SettingsPanel(config));
         content.addPage("console", new ConsolePanel());
         content.addPage("about", new AboutPanel());
 
         Sidebar sidebar = new Sidebar(
-                new String[] { "Play", "Inject", "Settings", "Console", "About" },
-                new Icons.Kind[] { Icons.Kind.PLAY, Icons.Kind.INJECT, Icons.Kind.SETTINGS,
-                                   Icons.Kind.CONSOLE, Icons.Kind.INFO },
+                new String[] { "Play", "Inject", "Licence", "Settings", "Console", "About" },
+                new Icons.Kind[] { Icons.Kind.PLAY, Icons.Kind.INJECT, Icons.Kind.KEY,
+                                   Icons.Kind.SETTINGS, Icons.Kind.CONSOLE, Icons.Kind.INFO },
                 this::onNavigate);
 
         JPanel root = new Backdrop();
@@ -87,6 +92,7 @@ public final class LauncherFrame extends JFrame {
         content.show(PAGES[index]);
         if (index == 0) home.refresh();
         if (index == 1) inject.refresh();
+        if (index == 2) licence.refresh();
     }
 
     @Override public void setVisible(boolean visible) {

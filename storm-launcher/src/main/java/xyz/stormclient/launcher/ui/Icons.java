@@ -16,7 +16,7 @@ import java.awt.geom.RoundRectangle2D;
  */
 public final class Icons {
 
-    public enum Kind { PLAY, INJECT, SETTINGS, CONSOLE, INFO, FOLDER, REFRESH, CHECK }
+    public enum Kind { PLAY, INJECT, SETTINGS, CONSOLE, INFO, FOLDER, REFRESH, CHECK, KEY }
 
     private Icons() { }
 
@@ -37,6 +37,7 @@ public final class Icons {
             case FOLDER:   folder(g, size); break;
             case REFRESH:  refresh(g, size); break;
             case CHECK:    check(g, size); break;
+            case KEY:      key(g, size); break;
         }
         g.dispose();
     }
@@ -123,6 +124,19 @@ public final class Icons {
         path.moveTo(s * 0.20, s * 0.52);
         path.lineTo(s * 0.42, s * 0.74);
         path.lineTo(s * 0.80, s * 0.26);
+        g.draw(path);
+    }
+
+    /** A key with a round bow and two teeth, for the licence page. */
+    private static void key(Graphics2D g, double s) {
+        g.draw(new java.awt.geom.Ellipse2D.Double(s * 0.14, s * 0.36, s * 0.30, s * 0.30));
+        Path2D.Double path = new Path2D.Double();
+        path.moveTo(s * 0.44, s * 0.51);
+        path.lineTo(s * 0.86, s * 0.51);
+        path.moveTo(s * 0.70, s * 0.51);
+        path.lineTo(s * 0.70, s * 0.68);
+        path.moveTo(s * 0.84, s * 0.51);
+        path.lineTo(s * 0.84, s * 0.64);
         g.draw(path);
     }
 

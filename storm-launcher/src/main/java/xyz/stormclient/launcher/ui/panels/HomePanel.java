@@ -122,6 +122,7 @@ public final class HomePanel extends BasePanel {
         options.debug = config.debug();
         options.agentOptions = Injector.buildOptions(version.id(), config.configProfile(),
                 options.bridgeJar, config.debug());
+        options.licence = config.licence();
 
         launch.setLoading(true);
         setStatus("starting " + version.id() + "...", StormTheme.TEXT_DIM);

@@ -18,7 +18,9 @@ public class GuiPreview {
         int width = Integer.parseInt(args[0]);
         int height = Integer.parseInt(args[1]);
         File out = new File(args[2]);
-        boolean hud = args.length > 3 && "hud".equals(args[3]);
+        String mode = args.length > 3 ? args[3] : "menu";
+        boolean hud = "hud".equals(mode);
+        if (mode.startsWith("menu")) { /* page chosen below */ }
 
         File dir = new File(System.getProperty("java.io.tmpdir"), "storm-preview");
         dir.mkdirs();
@@ -63,8 +65,25 @@ public class GuiPreview {
             System.exit(0);
         }
 
-        ClickGuiScreen screen = new ClickGuiScreen();
-        screen.panels().get(0).buttons().get(1).setExpanded(true);
+        xyz.stormclient.ui.Screen screen;
+        if ("panels".equals(mode)) {
+            ClickGuiScreen panels = new ClickGuiScreen();
+            panels.panels().get(0).buttons().get(1).setExpanded(true);
+            screen = panels;
+        } else {
+            xyz.stormclient.ui.menu.MenuScreen menu = new xyz.stormclient.ui.menu.MenuScreen();
+            // mode picks which page the picture shows: menu, menu:Theme, menu:Configs, ...
+            int colon = mode.indexOf(':');
+            String page = colon < 0 ? "Combat" : mode.substring(colon + 1);
+            xyz.stormclient.ui.menu.Page opened = menu.select(page);
+            if (opened instanceof xyz.stormclient.ui.menu.ModulesPage) {
+                ((xyz.stormclient.ui.menu.ModulesPage) opened).expand(
+                        Storm.get().modules().byCategory(
+                                xyz.stormclient.module.Category.valueOf(page.toUpperCase()))
+                                .get(0).name());
+            }
+            screen = menu;
+        }
         screen.onOpen(width, height);
 
         // The menu is translucent, so stacking frames would paint it opaque.

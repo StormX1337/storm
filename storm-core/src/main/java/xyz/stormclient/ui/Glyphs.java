@@ -64,6 +64,51 @@ public final class Glyphs {
         }
     }
 
+    /** A cog, for the settings page. */
+    public static void gear(IRenderer r, double x, double y, double size, int color) {
+        double c = size / 2;
+        r.arc(x + c, y + c, size * 0.30, 0F, 360F, Math.max(1F, (float) (size * 0.16)), color);
+        for (int i = 0; i < 6; i++) {
+            double a = i * Math.PI / 3;
+            double t = size * 0.15;
+            r.rect(x + c + Math.cos(a) * size * 0.38 - t / 2,
+                   y + c + Math.sin(a) * size * 0.38 - t / 2, t, t, color);
+        }
+    }
+
+    /** A paint drop, for the theme page. */
+    public static void palette(IRenderer r, double x, double y, double size, int color) {
+        double c = size / 2;
+        r.arc(x + c, y + c, size * 0.42, 0F, 360F, 1F, color);
+        r.circle(x + c - size * 0.16, y + c - size * 0.10, size * 0.09, color);
+        r.circle(x + c + size * 0.16, y + c - size * 0.10, size * 0.09, color);
+        r.circle(x + c, y + c + size * 0.18, size * 0.09, color);
+    }
+
+    /** A folder, for the config page. */
+    public static void folder(IRenderer r, double x, double y, double size, int color) {
+        double u = size / 8.0;
+        r.rect(x + u, y + 1.6 * u, 2.8 * u, u, color);
+        r.rectOutline(x + u, y + 2.6 * u, 6 * u, 4 * u, (float) Math.max(1, u * 0.8), color);
+    }
+
+    /** A keyboard, for the keybind page. */
+    public static void keyboard(IRenderer r, double x, double y, double size, int color) {
+        double u = size / 8.0;
+        r.rectOutline(x + 0.6 * u, y + 2.2 * u, 6.8 * u, 4 * u, (float) Math.max(1, u * 0.7), color);
+        for (int i = 0; i < 3; i++) r.rect(x + (1.8 + i * 1.6) * u, y + 3.4 * u, u, u, color);
+        r.rect(x + 2.4 * u, y + 5 * u, 3.4 * u, u, color);
+    }
+
+    /** A key, for the licence page. */
+    public static void key(IRenderer r, double x, double y, double size, int color) {
+        double u = size / 8.0;
+        r.arc(x + 2.2 * u, y + 4 * u, 1.7 * u, 0F, 360F, (float) Math.max(1, u * 0.8), color);
+        r.rect(x + 3.9 * u, y + 3.6 * u, 3.6 * u, 0.9 * u, color);
+        r.rect(x + 6.2 * u, y + 4.5 * u, 0.9 * u, 1.4 * u, color);
+        r.rect(x + 7.1 * u, y + 4.5 * u, 0.8 * u, 1.0 * u, color);
+    }
+
     /**
      * The icon in a category header. Each one is a small pictogram rather than
      * a letter, so the headers read at a glance.

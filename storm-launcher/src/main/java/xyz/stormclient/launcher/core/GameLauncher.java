@@ -37,6 +37,7 @@ public final class GameLauncher {
         public File    agentJar;
         public File    bridgeJar;
         public String  agentOptions = "";
+        public String  licence = "";
         public int     ram        = 4096;
         public boolean debug;
     }
@@ -75,6 +76,9 @@ public final class GameLauncher {
         command.add("-Dstorm.mcversion=" + options.version);
         command.add("-Djava.library.path=" + natives.getAbsolutePath());
         command.add("-Dminecraft.launcher.brand=storm");
+        if (options.licence != null && !options.licence.isEmpty()) {
+            command.add("-Dstorm.licence=" + options.licence);
+        }
         command.add("-Dminecraft.launcher.version=" + xyz.stormclient.launcher.StormLauncher.VERSION);
         // only exists from Java 21 on, and an older JVM refuses to start at all
         // when handed a flag it does not know

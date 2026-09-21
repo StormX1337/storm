@@ -212,9 +212,13 @@ if ($Task -eq "test" -or $Task -eq "preview") {
     if ($Task -eq "preview") {
         $previewDir = Join-Path $root "preview"
         New-Item -ItemType Directory -Force -Path $previewDir | Out-Null
+        foreach ($page in @("Combat", "Theme", "Settings", "Configs", "Keybinds", "Licence")) {
+            & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.GuiPreview `
+                    960 540 (Join-Path $previewDir "menu-$page.png") "menu:$page"
+        }
         foreach ($size in @(@(960, 540), @(480, 270))) {
             & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.GuiPreview `
-                    $size[0] $size[1] (Join-Path $previewDir "clickgui-$($size[0])x$($size[1]).png")
+                    $size[0] $size[1] (Join-Path $previewDir "panels-$($size[0])x$($size[1]).png") panels
         }
         & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.GuiPreview `
                 960 540 (Join-Path $previewDir "hud-960x540.png") hud
