@@ -82,7 +82,12 @@ public final class GameLauncher {
             command.add("-XX:+EnableDynamicAgentLoading");
         }
 
-        installBridgeAsMod(options);
+        if (installBridgeAsMod(options)) {
+            // The mod loader owns the bridge now. Handing the same jar to the
+            // agent as well puts it on the class path a second time, and FML
+            // refuses to initialise any mod once it has seen a duplicate id.
+            options.agentOptions = withoutBridge(options.agentOptions);
+        }
 
         if (options.agentJar != null && options.agentJar.isFile()) {
             command.add("-javaagent:" + options.agentJar.getAbsolutePath()
@@ -283,26 +288,41 @@ public final class GameLauncher {
      * loaded at the right moment by the mod loader instead, and the agent's
      * own attempt simply finds the work already done.
      */
-    private static void installBridgeAsMod(Options options) {
-        if (options.bridgeJar == null || !options.bridgeJar.isFile()) return;
+    private static boolean installBridgeAsMod(Options options) {
+        if (options.bridgeJar == null || !options.bridgeJar.isFile()) return false;
 
         File mods = new File(options.gameDir, "mods");
         if (!mods.isDirectory() && !mods.mkdirs()) {
             Log.warn("could not create " + mods);
-            return;
+            return false;
         }
         File target = new File(mods, options.bridgeJar.getName());
         if (target.isFile() && target.length() == options.bridgeJar.length()
                 && target.lastModified() >= options.bridgeJar.lastModified()) {
-            return;
+            return true;
         }
         try {
             Files.copy(options.bridgeJar.toPath(), target.toPath(),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             Log.info("bridge copied into " + mods.getName() + "/");
+            return true;
         } catch (IOException e) {
             Log.warn("could not copy the bridge into the mods folder: " + e);
+            return false;
         }
+    }
+
+    /** Drops the bridge entry from the agent options, keeping the rest intact. */
+    private static String withoutBridge(String agentOptions) {
+        if (agentOptions == null || agentOptions.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+        for (String pair : agentOptions.split(";")) {
+            if (pair.toLowerCase().startsWith("bridge=")) continue;
+            if (sb.length() > 0) sb.append(';');
+            sb.append(pair);
+        }
+        return sb.toString();
     }
 
     /** Where a downloaded library belongs. */
