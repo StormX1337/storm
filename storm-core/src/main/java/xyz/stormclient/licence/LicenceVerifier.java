@@ -16,6 +16,11 @@ import java.util.Map;
  * signature covers exactly those payload bytes, so changing a single character
  * of it invalidates the licence.
  *
+ * <p>{@code expires} is when this blob stops being accepted and {@code until}
+ * is when the purchase behind it ends. A licence server signs short lived
+ * blobs so a refund or a chargeback takes effect within days, while the
+ * customer still sees their real end date.
+ *
  * <h2>What this does and does not buy you</h2>
  * The signature cannot be forged without the private key, so nobody can mint
  * themselves a licence. It is still a check that runs on the user's own
@@ -87,7 +92,8 @@ public final class LicenceVerifier {
                 value(fields.get("plan"), "standard"),
                 value(fields.get("id"), "-"),
                 number(fields.get("issued")),
-                expires);
+                expires,
+                number(fields.get("until")));
     }
 
     private static boolean signatureMatches(byte[] payload, byte[] signature) {

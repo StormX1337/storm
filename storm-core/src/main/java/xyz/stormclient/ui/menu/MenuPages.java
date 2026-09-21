@@ -91,7 +91,8 @@ public final class MenuPages {
             for (Module module : Storm.get().modules().all()) {
                 if (module.hidden()) continue;
                 modules.add(module);
-                rows.add(MenuControls.of(module.keybindSetting()));
+                // the row's own "Keybind" label would land on the module name
+                rows.add(MenuControls.of(module.keybindSetting()).withoutLabel());
             }
         }
 

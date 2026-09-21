@@ -207,6 +207,8 @@ if ($Task -eq "test" -or $Task -eq "preview") {
     }
     & $java -cp "$out\core;$out\test" xyz.stormclient.test.StormSmokeTest
     if ($LASTEXITCODE -ne 0) { exit 1 }
+    & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.ClickTest
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 
     # paints the real menu into a PNG, so its layout can be checked without a game
     if ($Task -eq "preview") {

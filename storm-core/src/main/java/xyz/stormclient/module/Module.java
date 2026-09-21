@@ -66,10 +66,18 @@ public abstract class Module {
         Storm.get().onModuleToggled(this);
     }
 
+    /**
+     * A module that throws on the way up is switched back off. That used to be
+     * silent apart from a log line, which reads from the outside as a switch
+     * that does nothing, so say it on screen too.
+     */
     private void crash(Throwable t) {
         this.enabled = false;
+        animation.set(false);
         Storm.get().bus().unregister(this);
         xyz.stormclient.util.StormLogger.error("module " + name + " threw, disabling it", t);
+        Storm.get().notifications().error(name,
+                "failed: " + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage()));
     }
 
     /** Re-applies the enabled state, used after a config load. */

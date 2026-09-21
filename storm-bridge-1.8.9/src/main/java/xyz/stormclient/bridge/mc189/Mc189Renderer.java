@@ -99,8 +99,18 @@ public final class Mc189Renderer implements IRenderer {
         corner(x + r, y + h - r, r, 90, 180, argb);
     }
 
+    /**
+     * A filled pie slice, used for every rounded corner and every circle.
+     *
+     * <p>Screen space has y pointing down, so walking the angle upwards winds
+     * the fan clockwise. Minecraft draws GUIs with face culling on and throws
+     * clockwise faces away, which turned every rounded rectangle into a
+     * rectangle with four notches and made circles vanish outright. Culling is
+     * off for the duration and restored afterwards.
+     */
     private void corner(double cx, double cy, float radius, float from, float to, int argb) {
         enableBlend();
+        GlStateManager.disableCull();
         color(argb);
         GL11.glBegin(GL11.GL_TRIANGLE_FAN);
         GL11.glVertex2d(cx, cy);
@@ -108,22 +118,62 @@ public final class Mc189Renderer implements IRenderer {
             double rad = Math.toRadians(angle);
             GL11.glVertex2d(cx + Math.cos(rad) * radius, cy + Math.sin(rad) * radius);
         }
+        // land exactly on the end angle, so a corner never leaves a sliver
+        double end = Math.toRadians(to);
+        GL11.glVertex2d(cx + Math.cos(end) * radius, cy + Math.sin(end) * radius);
         GL11.glEnd();
+        GlStateManager.enableCull();
         disableBlend();
         GlStateManager.color(1F, 1F, 1F, 1F);
     }
 
+    /**
+     * Four straight edges and four quarter rings.
+     *
+     * <p>This used to fill the whole shape in the outline colour and then try
+     * to punch the middle out with a transparent pass, which does nothing:
+     * drawing alpha zero over a pixel leaves it exactly as it was. Every
+     * "outlined" panel was a solid block of the outline colour.
+     */
     @Override public void roundedRectOutline(double x, double y, double w, double h,
                                              float radius, float thickness, int argb) {
-        roundedRect(x, y, w, h, radius, argb);
-        roundedRect(x + thickness, y + thickness, w - thickness * 2, h - thickness * 2,
-                Math.max(0F, radius - thickness), 0x00000000);
-        // the inner clear pass only works on top of an opaque background, so draw
-        // the four edges explicitly instead
-        rect(x + radius, y, w - radius * 2, thickness, argb);
-        rect(x + radius, y + h - thickness, w - radius * 2, thickness, argb);
-        rect(x, y + radius, thickness, h - radius * 2, argb);
-        rect(x + w - thickness, y + radius, thickness, h - radius * 2, argb);
+        float r = Math.min(radius, (float) Math.min(w, h) / 2F);
+        if (r <= 0.01F) { rectOutline(x, y, w, h, thickness, argb); return; }
+
+        rect(x + r, y, w - r * 2, thickness, argb);
+        rect(x + r, y + h - thickness, w - r * 2, thickness, argb);
+        rect(x, y + r, thickness, h - r * 2, argb);
+        rect(x + w - thickness, y + r, thickness, h - r * 2, argb);
+
+        ring(x + r, y + r, r, 180, 270, thickness, argb);
+        ring(x + w - r, y + r, r, 270, 360, thickness, argb);
+        ring(x + w - r, y + h - r, r, 0, 90, thickness, argb);
+        ring(x + r, y + h - r, r, 90, 180, thickness, argb);
+    }
+
+    /**
+     * A band of the given thickness along an arc, built from quads.
+     *
+     * <p>Line strips would be simpler, but glLineWidth above one pixel is not
+     * dependable across drivers, so the band is real geometry.
+     */
+    private void ring(double cx, double cy, double radius, float from, float to,
+                      float thickness, int argb) {
+        enableBlend();
+        GlStateManager.disableCull();
+        color(argb);
+        double inner = Math.max(0, radius - thickness);
+        GL11.glBegin(GL11.GL_QUAD_STRIP);
+        for (float angle = from; angle <= to + 0.001F; angle += 3F) {
+            double rad = Math.toRadians(Math.min(angle, to));
+            double cos = Math.cos(rad), sin = Math.sin(rad);
+            GL11.glVertex2d(cx + cos * radius, cy + sin * radius);
+            GL11.glVertex2d(cx + cos * inner, cy + sin * inner);
+        }
+        GL11.glEnd();
+        GlStateManager.enableCull();
+        disableBlend();
+        GlStateManager.color(1F, 1F, 1F, 1F);
     }
 
     @Override public void gradientRect(double x, double y, double w, double h, int topArgb, int bottomArgb) {
@@ -168,16 +218,7 @@ public final class Mc189Renderer implements IRenderer {
 
     @Override public void arc(double cx, double cy, double radius, float start, float end,
                               float thickness, int argb) {
-        enableBlend();
-        color(argb);
-        GL11.glLineWidth(thickness);
-        GL11.glBegin(GL11.GL_LINE_STRIP);
-        for (float angle = start; angle <= end; angle += 3F) {
-            double rad = Math.toRadians(angle);
-            GL11.glVertex2d(cx + Math.cos(rad) * radius, cy + Math.sin(rad) * radius);
-        }
-        GL11.glEnd();
-        disableBlend();
+        ring(cx, cy, radius, start, end, Math.max(1F, thickness), argb);
     }
 
     @Override public void shadow(double x, double y, double w, double h, float radius, int argb) {
@@ -214,17 +255,44 @@ public final class Mc189Renderer implements IRenderer {
         GlStateManager.color(1F, 1F, 1F, 1F);
     }
 
+    /**
+     * Clip rectangles nest: a card inside a scrolling page pushes its own, and
+     * ending it has to put the page's back rather than switch clipping off, or
+     * everything drawn afterwards spills out of the window.
+     */
+    private final java.util.Deque<double[]> scissors = new java.util.ArrayDeque<double[]>();
+
     @Override public void scissorBegin(double x, double y, double w, double h) {
-        ScaledResolution resolution = new ScaledResolution(Minecraft.getMinecraft());
-        int factor = resolution.getScaleFactor();
-        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor((int) (x * factor),
-                       (int) ((resolution.getScaledHeight() - (y + h)) * factor),
-                       (int) (w * factor),
-                       (int) (h * factor));
+        double[] area = { x, y, x + w, y + h };
+        double[] parent = scissors.peek();
+        if (parent != null) {
+            area[0] = Math.max(area[0], parent[0]);
+            area[1] = Math.max(area[1], parent[1]);
+            area[2] = Math.min(area[2], parent[2]);
+            area[3] = Math.min(area[3], parent[3]);
+        }
+        scissors.push(area);
+        applyScissor(area);
     }
 
-    @Override public void scissorEnd() { GL11.glDisable(GL11.GL_SCISSOR_TEST); }
+    @Override public void scissorEnd() {
+        if (!scissors.isEmpty()) scissors.pop();
+        double[] parent = scissors.peek();
+        if (parent == null) GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        else applyScissor(parent);
+    }
+
+    private void applyScissor(double[] area) {
+        ScaledResolution resolution = new ScaledResolution(Minecraft.getMinecraft());
+        int factor = resolution.getScaleFactor();
+        double width = Math.max(0, area[2] - area[0]);
+        double height = Math.max(0, area[3] - area[1]);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor((int) (area[0] * factor),
+                       (int) ((resolution.getScaledHeight() - area[1] - height) * factor),
+                       (int) (width * factor),
+                       (int) (height * factor));
+    }
 
     // ------------------------------------------------------------------
     //  3D

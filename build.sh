@@ -44,15 +44,15 @@ fi
 # dist keeps whatever else is in it, in particular the bridge jar, which costs
 # a whole ForgeGradle build to replace
 rm -rf "$OUT"
-mkdir -p "$OUT/core" "$OUT/agent" "$OUT/launcher" "$OUT/test" "$DIST"
+mkdir -p "$OUT/core" "$OUT/agent" "$OUT/launcher" "$OUT/server" "$OUT/test" "$DIST"
 
 # ---- storm-core ---------------------------------------------------
-echo "[1/4] storm-core"
+echo "[1/5] storm-core"
 find "$ROOT/storm-core/src/main/java" -name '*.java' > "$OUT/core.txt"
 "$JAVAC" --release 8 -encoding UTF-8 -nowarn -d "$OUT/core" @"$OUT/core.txt"
 
 # ---- storm-agent --------------------------------------------------
-echo "[2/4] storm-agent"
+echo "[2/5] storm-agent"
 find "$ROOT/storm-agent/src/main/java" -name '*.java' > "$OUT/agent.txt"
 "$JAVAC" --release 8 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/agent" @"$OUT/agent.txt"
 
@@ -67,7 +67,7 @@ cp -r "$OUT/core/." "$OUT/agent/"
 "$JAR" --create --file "$DIST/storm-agent.jar" --manifest "$OUT/agent-manifest.txt" -C "$OUT/agent" .
 
 # ---- storm-launcher -----------------------------------------------
-echo "[3/4] storm-launcher"
+echo "[3/5] storm-launcher"
 find "$ROOT/storm-launcher/src/main/java" -name '*.java' > "$OUT/launcher.txt"
 "$JAVAC" --release 17 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/launcher" @"$OUT/launcher.txt"
 
@@ -75,12 +75,22 @@ cp -r "$OUT/core/." "$OUT/launcher/"
 "$JAR" --create --file "$DIST/storm-launcher.jar" \
        --main-class xyz.stormclient.launcher.StormLauncher -C "$OUT/launcher" .
 
+# ---- storm-licence-server -----------------------------------------
+echo "[4/5] storm-licence-server"
+find "$ROOT/storm-licence-server/src/main/java" -name '*.java' > "$OUT/server.txt"
+"$JAVAC" --release 17 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/server" @"$OUT/server.txt"
+
+cp -r "$OUT/core/." "$OUT/server/"
+"$JAR" --create --file "$DIST/storm-licence-server.jar" \
+       --main-class xyz.stormclient.licenceserver.LicenceServer -C "$OUT/server" .
+
 # ---- smoke test ---------------------------------------------------
 if [ "${1:-}" = "test" ] || [ "${1:-}" = "preview" ]; then
-    echo "[4/4] smoke test"
+    echo "[5/5] smoke test"
     find "$ROOT/storm-core/src/test/java" -name '*.java' > "$OUT/test.txt"
     "$JAVAC" --release 8 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/test" @"$OUT/test.txt"
     "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.StormSmokeTest
+    "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.ClickTest
 
     # paints the real menu into a PNG, so its layout can be checked without a game
     if [ "${1:-}" = "preview" ]; then
@@ -98,7 +108,7 @@ if [ "${1:-}" = "test" ] || [ "${1:-}" = "preview" ]; then
                 960 540 "$ROOT/preview/hud-960x540.png" hud
     fi
 else
-    echo "[4/4] smoke test      skipped (run ./build.sh test to include it)"
+    echo "[5/5] smoke test      skipped (run ./build.sh test to include it)"
 fi
 
 echo

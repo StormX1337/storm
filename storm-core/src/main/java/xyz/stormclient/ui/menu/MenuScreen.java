@@ -40,6 +40,13 @@ public final class MenuScreen extends Screen {
 
     private double windowX, windowY, windowW, windowH;
 
+    /** Where the sidebar's selection pill is, and where it is heading. */
+    private double pillY = -1;
+    private double pillTarget;
+    private long lastFrame = System.nanoTime();
+    /** Fades the content while a new page takes over. */
+    private final Animation pageFade = new Animation(14F);
+
     public MenuScreen() {
         items.add(Item.label("MODULES"));
         for (Category category : Category.values()) {
@@ -57,6 +64,7 @@ public final class MenuScreen extends Screen {
         for (Item item : items) {
             if (item.page != null) { selected = item; break; }
         }
+        pageFade.snap(1F);
     }
 
     private static Iterable<xyz.stormclient.setting.Setting<?>> themeSettings() {
@@ -73,6 +81,10 @@ public final class MenuScreen extends Screen {
     @Override public void onOpen(int width, int height) {
         super.onOpen(width, height);
         fade.set(true);
+        pageFade.snap(0F);
+        pageFade.set(true);
+        pillY = -1;
+        if (selected != null && selected.page != null) selected.page.onShown();
         layout();
     }
 
@@ -120,10 +132,24 @@ public final class MenuScreen extends Screen {
         renderHeader(r, wx, wy, mouseX, mouseY);
 
         if (selected != null && selected.page != null) {
+            float page = pageFade.easedOut();
+            r.push();
+            r.translate((1 - page) * 12, 0, 0);
             selected.page.setBounds(wx + SIDEBAR + PAD, wy + HEADER,
                     windowW - SIDEBAR - PAD * 2, windowH - HEADER - PAD);
             selected.page.render(mouseX, mouseY, selected.page.searchable() ? search : "");
+            r.pop();
         }
+    }
+
+    /** Eases the sidebar pill towards the selected row. */
+    private void stepPill(double target) {
+        long now = System.nanoTime();
+        float delta = Math.min(0.25F, (now - lastFrame) / 1_000_000_000F);
+        lastFrame = now;
+        pillTarget = target;
+        if (pillY < 0) { pillY = target; return; }
+        pillY += (pillTarget - pillY) * Math.min(1.0, delta * 18);
     }
 
     private void renderSidebar(IRenderer r, double wx, double wy, int mouseX, int mouseY) {
@@ -138,7 +164,19 @@ public final class MenuScreen extends Screen {
         name.draw(StormInfo.NAME + " Client", wx + 26, wy + 11, theme().text());
         small.draw("v" + StormInfo.VERSION, wx + 26, wy + 11 + name.height(), theme().textFaint());
 
+        // the pill glides between rows, so the eye follows the selection
+        double selectedY = wy + 36;
         double y = wy + 36;
+        for (Item item : items) {
+            if (item == selected) selectedY = y;
+            y += item.page == null ? 16 : ITEM;
+        }
+        stepPill(selectedY);
+        r.roundedRect(wx + 6, pillY, SIDEBAR - 12, ITEM, 5F,
+                ColorUtil.withAlpha(theme().accent(), 42));
+        r.roundedRect(wx + 6, pillY + 4, 2, ITEM - 8, 1F, theme().accent());
+
+        y = wy + 36;
         for (Item item : items) {
             if (item.page == null) {
                 small.draw(item.label, wx + 14, y + 5, theme().textFaint());
@@ -148,22 +186,20 @@ public final class MenuScreen extends Screen {
 
             boolean active = item == selected;
             boolean hover = MathUtil.inside(mouseX, mouseY, wx + 6, y, SIDEBAR - 12, ITEM);
-            item.hover.set(hover || active);
+            item.hover.set(hover);
             float h = item.hover.eased();
 
-            if (active) {
+            if (h > 0.01F && !active) {
                 r.roundedRect(wx + 6, y, SIDEBAR - 12, ITEM, 5F,
-                        ColorUtil.withAlpha(theme().accent(), 40));
-                r.roundedRect(wx + 6, y + 4, 2, ITEM - 8, 1F, theme().accent());
-            } else if (h > 0.01F) {
-                r.roundedRect(wx + 6, y, SIDEBAR - 12, ITEM, 5F,
-                        ColorUtil.withAlpha(theme().text(), (int) (14 * h)));
+                        ColorUtil.withAlpha(theme().text(), (int) (16 * h)));
             }
 
+            // hovering nudges the row towards its label, which reads as a press
+            double nudge = h * 1.5;
             int tint = active ? theme().accent() : ColorUtil.mix(theme().textDim(), theme().text(), h);
-            item.drawIcon(r, wx + 14, y + (ITEM - 9) / 2, 9, tint);
-            small.draw(item.label, wx + 28, y + (ITEM - small.height()) / 2.0,
-                    active ? theme().text() : theme().textDim());
+            item.drawIcon(r, wx + 14 + nudge, y + (ITEM - 9) / 2, 9, tint);
+            small.draw(item.label, wx + 28 + nudge, y + (ITEM - small.height()) / 2.0,
+                    active ? theme().text() : ColorUtil.mix(theme().textDim(), theme().text(), h));
 
             if (item.category != null) {
                 String count = String.valueOf(ModulesPage.count(item.category));
@@ -224,6 +260,9 @@ public final class MenuScreen extends Screen {
                 if (item != selected) {
                     selected = item;
                     selected.page.resetScroll();
+                    selected.page.onShown();
+                    pageFade.snap(0F);
+                    pageFade.set(true);
                     search = "";
                 }
                 return;
@@ -276,6 +315,8 @@ public final class MenuScreen extends Screen {
             if (item.page != null && item.label.equalsIgnoreCase(label)) {
                 selected = item;
                 selected.page.resetScroll();
+                selected.page.onShown();
+                pageFade.snap(1F);
                 return selected.page;
             }
         }

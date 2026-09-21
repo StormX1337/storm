@@ -16,6 +16,7 @@ import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.util.Animation;
 import xyz.stormclient.util.ColorUtil;
 import xyz.stormclient.util.MathUtil;
+import xyz.stormclient.util.Stagger;
 
 /**
  * The modules of one category, as a list of cards.
@@ -31,6 +32,7 @@ public final class ModulesPage extends Page {
 
     private final Category category;
     private final List<Card> cards = new ArrayList<Card>();
+    private final Stagger reveal = new Stagger(0.28F, 0.035F, 14);
 
     public ModulesPage(Category category) {
         this.category = category;
@@ -38,6 +40,8 @@ public final class ModulesPage extends Page {
             cards.add(new Card(module));
         }
     }
+
+    @Override public void onShown() { reveal.restart(); }
 
     @Override public String title() { return category.label() + " Modules"; }
 
@@ -51,11 +55,16 @@ public final class ModulesPage extends Page {
 
     @Override protected void renderBody(int mouseX, int mouseY, String search) {
         double y = bodyTop();
+        int shown = 0;
         for (Card card : cards) {
             if (!card.matches(search)) continue;
             card.position(x, y, width - 6);
-            if (y + card.height() >= this.y && y <= this.y + height) card.render(mouseX, mouseY);
+            if (y + card.height() >= this.y && y <= this.y + height) {
+                // each card slides up into place a moment after the one above it
+                card.render(mouseX, mouseY, reveal.progress(shown));
+            }
             y += card.height() + CARD_GAP;
+            shown++;
         }
         setContentHeight(y - bodyTop());
     }
@@ -130,7 +139,17 @@ public final class ModulesPage extends Page {
             return CARD_HEAD + (t > 0.001F ? settingsHeight() * t : 0);
         }
 
-        void render(int mouseX, int mouseY) {
+        /** {x, y, w, h} of the switch. Drawing and hit testing both read this. */
+        double[] switchBounds() {
+            double sw = 26, sh = 14;
+            return new double[] { x + width - MenuControls.PAD - sw,
+                                  y + (CARD_HEAD - sh) / 2, sw, sh };
+        }
+
+        void render(int mouseX, int mouseY) { render(mouseX, mouseY, 1F); }
+
+        void render(int mouseX, int mouseY, float entrance) {
+            if (entrance <= 0.001F) return;
             IRenderer r = r();
             IFontRenderer name = font(UiScale.HEADER_FONT);
             IFontRenderer small = font(UiScale.COMPONENT_FONT);
@@ -142,27 +161,50 @@ public final class ModulesPage extends Page {
             float hoverT = hoverAnim.eased();
             float onT = toggleAnim.eased();
 
-            r.roundedRect(x, y, width, h, 6F, ColorUtil.mix(
-                    ColorUtil.withAlpha(theme().panelLight(), 225),
-                    ColorUtil.withAlpha(theme().panelLight(), 255), hoverT));
-            r.roundedRectOutline(x, y, width, h, 6F, 1F,
-                    ColorUtil.mix(theme().outline(), ColorUtil.withAlpha(theme().accent(), 110), onT));
+            // the entrance moves the card and fades it, the hover lifts it
+            double slide = (1 - entrance) * 14;
+            double lift = hoverT * 1.5;
+            r.push();
+            r.translate(slide, -lift, 0);
 
-            double textX = x + MenuControls.PAD;
-            name.draw(module.name(), textX, y + 8, theme().text());
+            if (hoverT > 0.02F && theme().shadows()) {
+                r.shadow(x, y, width, h, 6F,
+                        ColorUtil.withAlpha(0xFF000000, (int) (70 * hoverT * entrance)));
+            }
+            r.roundedRect(x, y, width, h, 6F, ColorUtil.withAlpha(ColorUtil.mix(
+                    theme().panelLight(),
+                    ColorUtil.brighter(theme().panelLight(), 1.3F), hoverT), (int) (238 * entrance)));
+            r.roundedRectOutline(x, y, width, h, 6F, 1F, ColorUtil.withAlpha(
+                    ColorUtil.mix(theme().outline(),
+                            ColorUtil.withAlpha(theme().accent(), 150), Math.max(onT, hoverT * 0.6F)),
+                    (int) (255 * entrance)));
+
+            // a module that is on carries the accent down its left edge
+            if (onT > 0.01F) {
+                r.roundedRect(x, y + 6 + (1 - onT) * (CARD_HEAD / 2 - 6), 2,
+                        (CARD_HEAD - 12) * onT + 1, 1F,
+                        ColorUtil.fade(theme().accent(), onT * entrance));
+            }
+
+            double textX = x + MenuControls.PAD + (onT > 0.01F ? 3 * onT : 0);
+            name.draw(module.name(), textX, y + 8,
+                    ColorUtil.fade(ColorUtil.mix(theme().text(), 0xFFFFFFFF, onT), entrance));
             small.draw(small.trim(module.description(), (int) (width - MenuControls.PAD * 2 - 44)),
-                    textX, y + 8 + name.height() + 1, theme().textFaint());
+                    textX, y + 8 + name.height() + 1, ColorUtil.fade(theme().textFaint(), entrance));
 
             // switch
-            double sw = 26, sh = 14;
-            double sx = x + width - MenuControls.PAD - sw;
-            double sy = y + (CARD_HEAD - sh) / 2;
-            r.roundedRect(sx, sy, sw, sh, (float) (sh / 2),
-                    ColorUtil.mix(ColorUtil.withAlpha(theme().text(), 28), theme().accent(), onT));
-            r.circle(sx + sh / 2 + (sw - sh) * onT, sy + sh / 2, sh / 2 - 1.8, 0xFFFFFFFF);
+            double[] box = switchBounds();
+            double sx = box[0], sy = box[1], sw = box[2], sh = box[3];
+            r.roundedRect(sx, sy, sw, sh, (float) (sh / 2), ColorUtil.fade(
+                    ColorUtil.mix(ColorUtil.withAlpha(theme().text(), 40), theme().accent(), onT),
+                    entrance));
+            // the knob grows a touch as it crosses, which sells the throw
+            double knob = sh / 2 - 2.0 + Math.sin(onT * Math.PI) * 0.6;
+            r.circle(sx + sh / 2 + (sw - sh) * onT, sy + sh / 2, knob,
+                    ColorUtil.fade(0xFFFFFFFF, entrance));
 
             float t = open.eased();
-            if (t <= 0.001F) return;
+            if (t <= 0.001F) { r.pop(); return; }
 
             r.scissorBegin(x, y + CARD_HEAD, width, h - CARD_HEAD);
             r.rect(x + MenuControls.PAD, y + CARD_HEAD - 1, width - MenuControls.PAD * 2, 1,
@@ -176,14 +218,14 @@ public final class ModulesPage extends Page {
                 ry += row.height();
             }
             r.scissorEnd();
+            r.pop();
         }
 
         void mouseDown(int mouseX, int mouseY, int button) {
             if (MathUtil.inside(mouseX, mouseY, x, y, width, CARD_HEAD)) {
-                double sw = 26, sh = 14;
-                double sx = x + width - MenuControls.PAD - sw;
-                double sy = y + (CARD_HEAD - sh) / 2;
-                if (button == 0 && MathUtil.inside(mouseX, mouseY, sx - 3, sy - 3, sw + 6, sh + 6)) {
+                double[] box = switchBounds();
+                if (button == 0 && MathUtil.inside(mouseX, mouseY,
+                        box[0] - 4, box[1] - 4, box[2] + 8, box[3] + 8)) {
                     module.toggle();
                 } else if (button == 0) {
                     expanded = !expanded;
@@ -217,6 +259,35 @@ public final class ModulesPage extends Page {
             for (MenuControls.Row row : rows.values()) if (row.capturingInput()) return true;
             return false;
         }
+    }
+
+    /**
+     * Where a module's switch ended up on the last frame: {x, y, w, h}, or null
+     * when that module is not on this page. The click test uses it to press
+     * exactly what the renderer drew.
+     */
+    public double[] switchBounds(String moduleName) {
+        Card card = find(moduleName);
+        return card == null ? null : card.switchBounds();
+    }
+
+    /** Where a module's card header ended up on the last frame. */
+    public double[] headerBounds(String moduleName) {
+        Card card = find(moduleName);
+        return card == null ? null : new double[] { card.x, card.y, card.width, CARD_HEAD };
+    }
+
+    /** Whether that module's settings are unfolded. */
+    public boolean expanded(String moduleName) {
+        Card card = find(moduleName);
+        return card != null && card.expanded;
+    }
+
+    private Card find(String moduleName) {
+        for (Card card : cards) {
+            if (card.module.name().equalsIgnoreCase(moduleName)) return card;
+        }
+        return null;
     }
 
     /** Unfolds one module's settings, used by the headless preview. */

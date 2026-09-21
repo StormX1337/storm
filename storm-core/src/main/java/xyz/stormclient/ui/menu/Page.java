@@ -17,8 +17,12 @@ import xyz.stormclient.util.MathUtil;
 public abstract class Page {
 
     protected double x, y, width, height;
+
+    /** Where the wheel put us, and where the body is actually drawn. */
+    private double scrollTarget;
     private double scroll;
     private double contentHeight;
+    private long lastFrame = System.nanoTime();
 
     /** Shown as the page heading. */
     public abstract String title();
@@ -42,10 +46,26 @@ public abstract class Page {
 
     public void render(int mouseX, int mouseY, String search) {
         IRenderer r = r();
+        stepScroll();
         r.scissorBegin(x, y, width, height);
         renderBody(mouseX, mouseY, search);
         r.scissorEnd();
         renderScrollbar(r);
+    }
+
+    /**
+     * Eases towards where the wheel asked to be. A list that snaps loses the
+     * reader's place; one that glides keeps it.
+     */
+    private void stepScroll() {
+        long now = System.nanoTime();
+        float delta = Math.min(0.25F, (now - lastFrame) / 1_000_000_000F);
+        lastFrame = now;
+
+        scrollTarget = MathUtil.clamp(scrollTarget, 0, maxScroll());
+        double remaining = scrollTarget - scroll;
+        if (Math.abs(remaining) < 0.35) { scroll = scrollTarget; return; }
+        scroll += remaining * Math.min(1.0, delta * 14);
     }
 
     private void renderScrollbar(IRenderer r) {
@@ -66,10 +86,13 @@ public abstract class Page {
 
     public void scroll(int amount, int mouseX, int mouseY) {
         if (!inside(mouseX, mouseY)) return;
-        scroll = MathUtil.clamp(scroll - amount * 16, 0, maxScroll());
+        scrollTarget = MathUtil.clamp(scrollTarget - amount * 34, 0, maxScroll());
     }
 
-    public void resetScroll() { scroll = 0; }
+    public void resetScroll() { scroll = scrollTarget = 0; }
+
+    /** Replays whatever entrance the page has. Called when it is selected. */
+    public void onShown() { }
 
     protected boolean inside(int mouseX, int mouseY) {
         return MathUtil.inside(mouseX, mouseY, x, y, width, height);

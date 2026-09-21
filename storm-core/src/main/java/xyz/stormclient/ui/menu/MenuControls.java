@@ -57,11 +57,20 @@ public final class MenuControls {
 
         public Setting<?> setting() { return setting; }
 
+        private boolean labelled = true;
+
         public void position(double x, double y, double width) {
             this.x = x;
             this.y = y;
             this.width = width;
         }
+
+        /**
+         * Turns the row's own label off. A page that already prints a heading
+         * in that spot — the keybind list prints the module name there — would
+         * otherwise draw two strings on top of each other.
+         */
+        public Row withoutLabel() { this.labelled = false; return this; }
 
         /** Extra height this row needs below the standard line, e.g. an open list. */
         protected double extraHeight() { return 0; }
@@ -82,11 +91,14 @@ public final class MenuControls {
             IFontRenderer small = font(UiScale.COMPONENT_FONT);
             Theme theme = theme();
 
-            double top = y + (hasDescription() ? 6 : (lineHeight() - name.height()) / 2);
-            name.draw(setting.name(), x + PAD, top, theme.text());
-            if (hasDescription()) {
-                small.draw(small.trim(setting.description(), (int) (width - PAD * 2 - controlWidth() - 12)),
-                        x + PAD, top + name.height() + 1, theme.textFaint());
+            if (labelled) {
+                double top = y + (hasDescription() ? 6 : (lineHeight() - name.height()) / 2);
+                name.draw(setting.name(), x + PAD, top, theme.text());
+                if (hasDescription()) {
+                    small.draw(small.trim(setting.description(),
+                                    (int) (width - PAD * 2 - controlWidth() - 12)),
+                            x + PAD, top + name.height() + 1, theme.textFaint());
+                }
             }
             renderControl(mouseX, mouseY);
         }
