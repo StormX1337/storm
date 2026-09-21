@@ -7,6 +7,7 @@ import xyz.stormclient.setting.ModeSetting;
 import xyz.stormclient.setting.NumberSetting;
 import xyz.stormclient.setting.Setting;
 import xyz.stormclient.setting.StringSetting;
+import xyz.stormclient.ui.Glyphs;
 import xyz.stormclient.util.Animation;
 import xyz.stormclient.util.ColorUtil;
 import xyz.stormclient.util.Keyboard;
@@ -35,20 +36,21 @@ public final class Components {
 
         Toggle(BooleanSetting value) { super(value); this.value = value; anim.snap(value.get() ? 1F : 0F); }
 
-        @Override public double height() { return 15; }
+        @Override public double height() { return 13; }
 
         @Override public void render(int mouseX, int mouseY) {
             anim.set(value.get());
             float t = anim.eased();
 
-            font().draw(value.name(), x + 4, y + 4, hovered(mouseX, mouseY) ? theme().text() : theme().textDim());
+            font().draw(value.name(), x + 5, y + (height() - font().height()) / 2,
+                    hovered(mouseX, mouseY) || t > 0.5F ? theme().text() : theme().textDim());
 
-            double bw = 18, bh = 9;
-            double bx = x + width - bw - 6;
-            double by = y + 3;
+            double bw = 14, bh = 7;
+            double bx = x + width - bw - 5;
+            double by = y + (height() - bh) / 2;
             r().roundedRect(bx, by, bw, bh, (float) (bh / 2.0),
-                    ColorUtil.mix(theme().panelDark(), theme().accent(), t));
-            r().circle(bx + bh / 2 + (bw - bh) * t, by + bh / 2, bh / 2 - 1.2, 0xFFFFFFFF);
+                    ColorUtil.mix(ColorUtil.withAlpha(theme().text(), 30), theme().accent(), t));
+            r().circle(bx + bh / 2.0 + (bw - bh) * t, by + bh / 2.0, bh / 2.0 - 1.0, 0xFFFFFFFF);
         }
 
         @Override public void mouseDown(int mouseX, int mouseY, int button) {
@@ -64,18 +66,19 @@ public final class Components {
 
         Slider(NumberSetting value) { super(value); this.value = value; }
 
-        @Override public double height() { return 22; }
+        @Override public double height() { return 19; }
 
         @Override public void render(int mouseX, int mouseY) {
-            font().draw(value.name(), x + 4, y + 2, theme().textDim());
+            font().draw(value.name(), x + 5, y + 2, theme().textDim());
             String text = value.display();
-            font().draw(text, x + width - font().width(text) - 6, y + 2, theme().text());
+            font().draw(text, x + width - font().width(text) - 5, y + 2,
+                    hovered(mouseX, mouseY) || dragging ? theme().accent() : theme().text());
 
-            double bx = x + 5, bw = width - 11, by = y + 15;
-            r().roundedRect(bx, by, bw, 3, 1.5F, theme().panelDark());
+            double bx = x + 5, bw = width - 10, by = y + 13;
+            r().roundedRect(bx, by, bw, 2, 1F, ColorUtil.withAlpha(theme().text(), 26));
             double filled = bw * value.fraction();
-            r().roundedRect(bx, by, filled, 3, 1.5F, theme().accent());
-            r().circle(bx + filled, by + 1.5, dragging ? 4 : 3, 0xFFFFFFFF);
+            r().roundedRect(bx, by, filled, 2, 1F, theme().accent());
+            r().circle(bx + filled, by + 1, dragging ? 3.2 : 2.4, 0xFFFFFFFF);
         }
 
         @Override public void mouseDown(int mouseX, int mouseY, int button) {
@@ -90,7 +93,7 @@ public final class Components {
         @Override public void mouseDragged(int mouseX, int mouseY) { if (dragging) drag(mouseX); }
 
         private void drag(int mouseX) {
-            value.setFraction((mouseX - (x + 5)) / (width - 11));
+            value.setFraction((mouseX - (x + 5)) / (width - 10));
         }
     }
 
@@ -102,39 +105,47 @@ public final class Components {
 
         Mode(ModeSetting value) { super(value); this.value = value; }
 
-        @Override public double height() { return open ? 15 + value.modes().size() * 12 : 15; }
+        private static final double ROW = 13;
+
+        @Override public double height() { return open ? ROW + value.modes().size() * 11 : ROW; }
 
         @Override public void render(int mouseX, int mouseY) {
-            font().draw(value.name(), x + 4, y + 4, theme().textDim());
-            String text = value.get() + (open ? " \u25b4" : " \u25be");
-            font().draw(text, x + width - font().width(text) - 6, y + 4, theme().accent());
+            double ty = y + (ROW - font().height()) / 2;
+            font().draw(value.name(), x + 5, ty, theme().textDim());
+
+            String text = value.get();
+            double tx = x + width - 12 - font().width(text);
+            font().draw(text, tx, ty, theme().accent());
+            Glyphs.chevron(r(), x + width - 9, y + ROW / 2 - 1.5, 4.5, open, theme().accent());
 
             if (!open) return;
-            double oy = y + 15;
+            double oy = y + ROW;
             for (String mode : value.modes()) {
                 boolean selected = value.is(mode);
-                boolean hover = MathUtil.inside(mouseX, mouseY, x, oy, width, 12);
-                if (hover) r().rect(x, oy, width, 12, ColorUtil.withAlpha(theme().accent(), 40));
-                font().draw(mode, x + 12, oy + 2, selected ? theme().accent() : theme().textDim());
-                oy += 12;
+                boolean hover = MathUtil.inside(mouseX, mouseY, x, oy, width, 11);
+                if (hover) r().rect(x, oy, width, 11, ColorUtil.withAlpha(theme().accent(), 34));
+                if (selected) r().rect(x + 4, oy + 4, 3, 3, theme().accent());
+                font().draw(mode, x + 11, oy + (11 - font().height()) / 2,
+                        selected ? theme().text() : theme().textDim());
+                oy += 11;
             }
         }
 
         @Override public void mouseDown(int mouseX, int mouseY, int button) {
-            if (MathUtil.inside(mouseX, mouseY, x, y, width, 15)) {
+            if (MathUtil.inside(mouseX, mouseY, x, y, width, ROW)) {
                 if (button == 0) open = !open;
                 else value.next();
                 return;
             }
             if (!open) return;
-            double oy = y + 15;
+            double oy = y + ROW;
             for (String mode : value.modes()) {
-                if (MathUtil.inside(mouseX, mouseY, x, oy, width, 12)) {
+                if (MathUtil.inside(mouseX, mouseY, x, oy, width, 11)) {
                     value.set(mode);
                     open = false;
                     return;
                 }
-                oy += 12;
+                oy += 11;
             }
         }
     }
@@ -148,15 +159,19 @@ public final class Components {
 
         Color(ColorSetting value) { super(value); this.value = value; }
 
-        @Override public double height() { return open ? 15 + 62 : 15; }
+        private static final double ROW = 13;
+
+        @Override public double height() { return open ? ROW + 60 : ROW; }
 
         @Override public void render(int mouseX, int mouseY) {
-            font().draw(value.name(), x + 4, y + 4, theme().textDim());
-            r().roundedRect(x + width - 22, y + 3, 16, 9, 2F, value.rgb());
+            font().draw(value.name(), x + 5, y + (ROW - font().height()) / 2, theme().textDim());
+            r().roundedRect(x + width - 20, y + (ROW - 7) / 2, 15, 7, 2F, value.rgb());
+            r().roundedRectOutline(x + width - 20, y + (ROW - 7) / 2, 15, 7, 2F, 1F,
+                    ColorUtil.withAlpha(theme().text(), 40));
 
             if (!open) return;
             float[] hsb = value.hsb();
-            double bx = x + 6, by = y + 18, bw = width - 34, bh = 44;
+            double bx = x + 6, by = y + ROW + 3, bw = width - 34, bh = 44;
 
             // saturation / brightness field
             r().gradientRectH(bx, by, bw, bh, 0xFFFFFFFF, ColorUtil.fromHsb(hsb[0], 1F, 1F, 255));
@@ -180,14 +195,14 @@ public final class Components {
         }
 
         @Override public void mouseDown(int mouseX, int mouseY, int button) {
-            if (MathUtil.inside(mouseX, mouseY, x, y, width, 15)) {
+            if (MathUtil.inside(mouseX, mouseY, x, y, width, ROW)) {
                 if (button == 0) open = !open;
                 else value.setRainbow(!value.rainbow());
                 return;
             }
             if (!open) return;
 
-            double bx = x + 6, by = y + 18, bw = width - 34, bh = 44;
+            double bx = x + 6, by = y + ROW + 3, bw = width - 34, bh = 44;
             if (MathUtil.inside(mouseX, mouseY, bx, by, bw, bh)) dragging = 0;
             else if (MathUtil.inside(mouseX, mouseY, x + width - 24, by, 8, bh)) dragging = 1;
             else if (MathUtil.inside(mouseX, mouseY, x + width - 13, by, 8, bh)) dragging = 2;
@@ -200,7 +215,7 @@ public final class Components {
         @Override public void mouseDragged(int mouseX, int mouseY) {
             if (dragging < 0) return;
             float[] hsb = value.hsb();
-            double bx = x + 6, by = y + 18, bw = width - 34, bh = 44;
+            double bx = x + 6, by = y + ROW + 3, bw = width - 34, bh = 44;
 
             if (dragging == 0) {
                 float s = (float) MathUtil.clamp((mouseX - bx) / bw, 0, 1);
@@ -222,12 +237,17 @@ public final class Components {
 
         Keybind(KeybindSetting value) { super(value); this.value = value; }
 
-        @Override public double height() { return 15; }
+        @Override public double height() { return 13; }
 
         @Override public void render(int mouseX, int mouseY) {
-            font().draw(value.name(), x + 4, y + 4, theme().textDim());
-            String text = value.display();
-            font().draw(text, x + width - font().width(text) - 6, y + 4,
+            double ty = y + (height() - font().height()) / 2;
+            font().draw(value.name(), x + 5, ty, theme().textDim());
+
+            String text = value.listening() ? "press a key" : value.display();
+            double tw = font().width(text);
+            r().roundedRect(x + width - tw - 11, y + 1.5, tw + 6, height() - 3, 2F,
+                    ColorUtil.withAlpha(value.listening() ? theme().accent() : theme().text(), 28));
+            font().draw(text, x + width - tw - 8, ty,
                     value.listening() ? theme().accent() : theme().text());
         }
 
@@ -252,13 +272,17 @@ public final class Components {
 
         Text(StringSetting value) { super(value); this.value = value; }
 
-        @Override public double height() { return 24; }
+        @Override public double height() { return 22; }
 
         @Override public void render(int mouseX, int mouseY) {
-            font().draw(value.name(), x + 4, y + 2, theme().textDim());
-            r().roundedRect(x + 5, y + 12, width - 11, 10, 2F, theme().panelDark());
-            String shown = font().trim(value.get(), (int) width - 16) + (focused ? "_" : "");
-            font().draw(shown, x + 8, y + 13, focused ? theme().text() : theme().textDim());
+            font().draw(value.name(), x + 5, y + 1, theme().textDim());
+            r().roundedRect(x + 5, y + 11, width - 10, 10, 3F, ColorUtil.withAlpha(0xFF000000, 90));
+            if (focused) {
+                r().roundedRectOutline(x + 5, y + 11, width - 10, 10, 3F, 1F, theme().accent());
+            }
+            String shown = font().trim(value.get(), (int) width - 18) + (focused ? "|" : "");
+            font().draw(shown, x + 9, y + 11 + (10 - font().height()) / 2.0,
+                    focused ? theme().text() : theme().textDim());
         }
 
         @Override public void mouseDown(int mouseX, int mouseY, int button) {

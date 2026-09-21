@@ -1,5 +1,6 @@
 package xyz.stormclient.module.impl.render;
 
+import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.Storm;
 import xyz.stormclient.bridge.IEntity;
 import xyz.stormclient.bridge.IFontRenderer;
@@ -33,7 +34,7 @@ public class Nametags extends Module {
     public void onRender(RenderEvent.Hud event) {
         if (nullCheck()) return;
         IRenderer r = mc().renderer();
-        IFontRenderer font = mc().font("storm", 16);
+        IFontRenderer font = mc().font(xyz.stormclient.Storm.get().theme().font(), UiScale.NAMETAG_FONT);
 
         for (IEntity e : world().entities()) {
             if (e.isLocalPlayer() || e.isDead()) continue;

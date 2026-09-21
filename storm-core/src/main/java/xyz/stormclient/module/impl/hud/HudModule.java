@@ -1,5 +1,6 @@
 package xyz.stormclient.module.impl.hud;
 
+import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.Storm;
 import xyz.stormclient.bridge.IFontRenderer;
 import xyz.stormclient.bridge.IRenderer;
@@ -53,7 +54,7 @@ public abstract class HudModule extends Module {
         if (mc().gui().stormScreenOpen() && Storm.get().hud().editing()) return;   // editor draws it instead
 
         IRenderer r = mc().renderer();
-        IFontRenderer font = mc().font(theme().font(), 16);
+        IFontRenderer font = mc().font(theme().font(), UiScale.HUD_FONT);
 
         r.push();
         r.translate(screenX(), screenY(), 0);

@@ -1,5 +1,6 @@
 package xyz.stormclient.module.impl.hud;
 
+import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.bridge.IFontRenderer;
 import xyz.stormclient.bridge.IInventory;
 import xyz.stormclient.bridge.IRenderer;
@@ -31,7 +32,7 @@ public class BlockCounter extends HudModule {
             if (inv.slot(i).isBlock() && inv.slot(i).registryName().equals(name)) count += inv.slot(i).count();
         }
 
-        IFontRenderer big = mc().font(theme().font(), 24);
+        IFontRenderer big = mc().font(theme().font(), UiScale.HUD_LARGE_FONT);
         String text = String.valueOf(count);
         double x = 0;
         if (icon.get()) {

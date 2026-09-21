@@ -1,5 +1,6 @@
 package xyz.stormclient.module.impl.hud;
 
+import xyz.stormclient.ui.UiScale;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -41,9 +42,9 @@ public class Hud extends HudModule {
 
     @Override public void renderElement(IRenderer r, IFontRenderer font) {
         if (!watermark.get()) return;
-        IFontRenderer big = mc().font(theme().font(), 22);
+        IFontRenderer big = mc().font(theme().font(), UiScale.HUD_LARGE_FONT);
 
-        xyz.stormclient.ui.click.ClickGuiScreen.drawBolt(r, 0, 2, 0.9, color.rgb());
+        xyz.stormclient.ui.Glyphs.bolt(r, 0, 2, 0.9, color.rgb());
         big.drawShadow(StormInfo.NAME, 12, 0, theme().text());
         font.drawShadow("v" + StormInfo.VERSION, 14 + big.width(StormInfo.NAME), 6, color.rgb());
     }
@@ -53,7 +54,7 @@ public class Hud extends HudModule {
     public void onRenderExtra(RenderEvent.Hud event) {
         if (nullCheck()) return;
         IRenderer r = mc().renderer();
-        IFontRenderer font = mc().font(theme().font(), 16);
+        IFontRenderer font = mc().font(theme().font(), UiScale.HUD_FONT);
 
         if (!listMode.is("Off")) renderModuleList(r, font);
         renderInfo(font);
@@ -76,7 +77,7 @@ public class Hud extends HudModule {
                 return Integer.compare(width(b, showTags), width(a, showTags));
             }
             private int width(Module m, boolean withTags) {
-                return mc().font(theme().font(), 16).width(label(m, withTags));
+                return mc().font(theme().font(), UiScale.HUD_FONT).width(label(m, withTags));
             }
         });
 

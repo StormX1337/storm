@@ -6,6 +6,7 @@
 #
 #  Usage:  .\build.ps1          build everything
 #          .\build.ps1 test     build, then run the smoke test
+#          .\build.ps1 preview  also paint the menu and HUD into preview\*.png
 #
 #  If PowerShell refuses to run the script:
 #      powershell -ExecutionPolicy Bypass -File .\build.ps1
@@ -199,13 +200,25 @@ Invoke-Step "      packing storm-launcher.jar" {
            --main-class xyz.stormclient.launcher.StormLauncher -C "$out\launcher" .
 }
 
-if ($Task -eq "test") {
+if ($Task -eq "test" -or $Task -eq "preview") {
     Invoke-Step "[4/4] smoke test" {
         Write-SourceList "$root\storm-core\src\test\java" "$out\test.txt"
         & $javac --release 8 -encoding UTF-8 -nowarn -cp "$out\core" -d "$out\test" "@$out\test.txt"
     }
     & $java -cp "$out\core;$out\test" xyz.stormclient.test.StormSmokeTest
     if ($LASTEXITCODE -ne 0) { exit 1 }
+
+    # paints the real menu into a PNG, so its layout can be checked without a game
+    if ($Task -eq "preview") {
+        $previewDir = Join-Path $root "preview"
+        New-Item -ItemType Directory -Force -Path $previewDir | Out-Null
+        foreach ($size in @(@(960, 540), @(480, 270))) {
+            & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.GuiPreview `
+                    $size[0] $size[1] (Join-Path $previewDir "clickgui-$($size[0])x$($size[1]).png")
+        }
+        & $java -cp "$out\core;$out\test" xyz.stormclient.test.preview.GuiPreview `
+                960 540 (Join-Path $previewDir "hud-960x540.png") hud
+    }
 } else {
     Write-Host "[4/4] smoke test      skipped (run .\build.ps1 test to include it)"
 }

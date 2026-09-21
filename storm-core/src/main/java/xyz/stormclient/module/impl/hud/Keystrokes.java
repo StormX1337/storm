@@ -51,7 +51,7 @@ public class Keystrokes extends HudModule {
             if (mode.is("Full")) {
                 r.roundedRect(0, y + row, width(), 8, rounded.get() ? 2F : 0F,
                         ColorUtil.mix(idle.rgb(), pressed.rgb(), keys[6].eased()));
-                font.drawCentered("\u2423", width() / 2, y + row, textColor(keys[6].eased()));
+                font.drawCentered("SPACE", width() / 2, y + row, textColor(keys[6].eased()));
             }
         }
     }

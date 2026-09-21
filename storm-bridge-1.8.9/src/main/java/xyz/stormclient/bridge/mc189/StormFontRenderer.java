@@ -30,6 +30,15 @@ public final class StormFontRenderer {
     private static final int LAST_CHAR = 255;
     private static final int PADDING = 2;
 
+    /**
+     * The atlas is baked at this multiple of the requested size and drawn back
+     * down again. A GUI pixel then covers several texels, so small text stays
+     * sharp instead of turning into the mush a 9 pixel atlas gives you.
+     */
+    private static final int OVERSAMPLE = 3;
+    /** Past this the atlas costs more memory than the extra sharpness is worth. */
+    private static final int MAX_BAKED = 64;
+
     private final int[] charWidth = new int[LAST_CHAR + 1];
     private final float[] charU = new float[LAST_CHAR + 1];
     private final float[] charV = new float[LAST_CHAR + 1];
@@ -38,10 +47,13 @@ public final class StormFontRenderer {
     private final int textureHeight;
     private final int lineHeight;
     private final int ascent;
+    /** Atlas pixels per requested pixel. */
+    private final float oversample;
 
     private DynamicTexture texture;
 
-    private StormFontRenderer(Font font) {
+    private StormFontRenderer(Font font, float oversample) {
+        this.oversample = oversample;
         BufferedImage probe = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         Graphics2D probeGraphics = probe.createGraphics();
         probeGraphics.setFont(font);
@@ -88,32 +100,39 @@ public final class StormFontRenderer {
 
     public static StormFontRenderer load(String name, int size) {
         Font font = null;
+        int requested = Math.max(6, size);
+        int baked = Math.min(MAX_BAKED, requested * OVERSAMPLE);
         InputStream stream = StormFontRenderer.class
                 .getResourceAsStream("/assets/storm/fonts/" + name + ".ttf");
         if (stream != null) {
             try {
-                font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(Font.PLAIN, (float) size);
+                font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(Font.PLAIN, (float) baked);
             } catch (Exception e) {
                 StormLogger.warn("could not read the " + name + " font, using a system font instead");
             } finally {
                 try { stream.close(); } catch (Exception ignored) { }
             }
         }
-        if (font == null) font = new Font("SansSerif", Font.PLAIN, size);
+        if (font == null) font = new Font("SansSerif", Font.PLAIN, baked);
 
         try {
-            return new StormFontRenderer(font);
+            return new StormFontRenderer(font, baked / (float) requested);
         } catch (Throwable t) {
             StormLogger.error("font renderer failed, falling back to the vanilla font", t);
             return null;
         }
     }
 
-    public int height() { return lineHeight; }
+    public int height() { return Math.round(lineHeight / oversample); }
 
     public int width(String text) {
-        if (text == null) return 0;
-        int width = 0;
+        return Math.round(bakedWidth(text) / oversample);
+    }
+
+    /** Width in atlas pixels, which is what the quad loop walks in. */
+    private float bakedWidth(String text) {
+        if (text == null) return 0F;
+        float width = 0F;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
             if (c == '\u00a7' && i + 1 < text.length()) { i++; continue; }   // colour code
@@ -132,7 +151,14 @@ public final class StormFontRenderer {
         GlStateManager.bindTexture(texture.getGlTextureId());
 
         int color = argb;
-        double cursor = x;
+        double cursor = 0;
+
+        // the atlas is baked several times too big, so draw it in its own space
+        // and let the matrix bring it back down to the requested size
+        float inverse = 1F / oversample;
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, 0);
+        GlStateManager.scale(inverse, inverse, 1F);
 
         GL11.glBegin(GL11.GL_QUADS);
         for (int i = 0; i < text.length(); i++) {
@@ -147,11 +173,12 @@ public final class StormFontRenderer {
 
             GlStateManager.color(((color >> 16) & 0xFF) / 255F, ((color >> 8) & 0xFF) / 255F,
                                  (color & 0xFF) / 255F, ((color >> 24) & 0xFF) / 255F);
-            quad(cursor, y, c);
+            quad(cursor, 0, c);
             cursor += charWidth[c];
         }
         GL11.glEnd();
 
+        GlStateManager.popMatrix();
         GlStateManager.color(1F, 1F, 1F, 1F);
         GlStateManager.disableBlend();
     }

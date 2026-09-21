@@ -11,6 +11,7 @@ import xyz.stormclient.bridge.IFontRenderer;
 import xyz.stormclient.bridge.IRenderer;
 import xyz.stormclient.event.Subscribe;
 import xyz.stormclient.event.events.RenderEvent;
+import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.ui.theme.Theme;
 import xyz.stormclient.util.ColorUtil;
 import xyz.stormclient.util.MathUtil;
@@ -53,7 +54,8 @@ public final class NotificationManager {
         if (!Bridge.installed()) return;
         IRenderer r = Bridge.mc().renderer();
         Theme theme = Storm.get().theme();
-        IFontRenderer font = Bridge.mc().font(theme.font(), 16);
+        IFontRenderer title = Bridge.mc().font(theme.font(), UiScale.HUD_FONT);
+        IFontRenderer body = Bridge.mc().font(theme.font(), UiScale.COMPONENT_FONT);
 
         double screenW = Bridge.mc().scaledWidth();
         double screenH = Bridge.mc().scaledHeight();
@@ -67,19 +69,25 @@ public final class NotificationManager {
             if (drawn++ >= MAX_VISIBLE) continue;
 
             float anim = n.animation.easedOut();
-            double width = Math.max(150, font.width(n.message()) + 34);
-            double height = 34;
+            // the card grows with whichever of the two lines is longer, so the
+            // message never has to be cut short to fit a fixed box
+            double text = Math.max(title.width(n.title()), body.width(n.message()));
+            double width = Math.max(96, text + 26);
+            // the two lines decide the height, so a taller font never spills out
+            double height = 7 + title.height() + body.height();
             double x = screenW - 10 - width * anim + (1 - anim) * 12;
 
-            y -= height + 5;
+            y -= height + 4;
 
             if (theme.shadows()) r.shadow(x, y, width, height, theme.radius(), ColorUtil.withAlpha(0xFF000000, (int) (70 * anim)));
             r.roundedRect(x, y, width, height, theme.radius(), ColorUtil.fade(theme.panel(), anim));
-            r.rect(x, y + height - 2, width * (1F - n.progress()), 2, ColorUtil.fade(n.type().color, anim));
-            r.roundedRect(x + 6, y + height / 2 - 6, 3, 12, 1.5F, ColorUtil.fade(n.type().color, anim));
+            r.roundedRectOutline(x, y, width, height, theme.radius(), 1F,
+                    ColorUtil.fade(theme.outline(), anim));
+            r.rect(x, y + height - 1.5, width * (1F - n.progress()), 1.5, ColorUtil.fade(n.type().color, anim));
+            r.roundedRect(x + 5, y + 5, 2, height - 10, 1F, ColorUtil.fade(n.type().color, anim));
 
-            font.draw(n.title(), x + 15, y + 7, ColorUtil.fade(theme.text(), anim));
-            font.draw(font.trim(n.message(), (int) width - 22), x + 15, y + 19,
+            title.draw(n.title(), x + 12, y + 3, ColorUtil.fade(theme.text(), anim));
+            body.draw(body.trim(n.message(), (int) width - 18), x + 12, y + 3 + title.height(),
                       ColorUtil.fade(theme.textDim(), anim));
         }
     }

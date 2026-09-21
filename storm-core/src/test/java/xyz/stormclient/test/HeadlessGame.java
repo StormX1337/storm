@@ -20,8 +20,9 @@ public final class HeadlessGame implements IMinecraft {
     private final File directory;
     private final Player player = new Player();
     private final World world = new World();
-    private final Renderer renderer = new Renderer();
-    private final Font font = new Font();
+    private IRenderer renderer = new Renderer();
+    private IFontRenderer font = new Font();
+    private FontFactory fonts;
     private final Input input = new Input();
     private final Network network = new Network();
     private final Gui gui = new Gui();
@@ -38,7 +39,19 @@ public final class HeadlessGame implements IMinecraft {
     @Override public IWorld world()        { return world; }
     @Override public IRenderer renderer()  { return renderer; }
     @Override public IFontRenderer font()  { return font; }
-    @Override public IFontRenderer font(String name, int size) { return font; }
+    @Override public IFontRenderer font(String name, int size) {
+        return fonts == null ? font : fonts.font(name, size);
+    }
+
+    /** Hands out one renderer per requested size, the way a real bridge does. */
+    public interface FontFactory {
+        IFontRenderer font(String name, int size);
+    }
+
+    /** Lets a test swap the counting stubs for something that really draws. */
+    public void setRenderer(IRenderer renderer) { this.renderer = renderer; }
+    public void setFont(IFontRenderer font) { this.font = font; }
+    public void setFonts(FontFactory fonts) { this.fonts = fonts; }
     @Override public IInput input()        { return input; }
     @Override public INetwork network()    { return network; }
     @Override public IGuiBridge gui()      { return gui; }

@@ -8,6 +8,7 @@
 #
 #  Usage:  ./build.sh          build everything
 #          ./build.sh test     build, then run the smoke test
+#          ./build.sh preview  also paint the menu and HUD into preview/*.png
 # ============================================================
 set -euo pipefail
 
@@ -75,11 +76,23 @@ cp -r "$OUT/core/." "$OUT/launcher/"
        --main-class xyz.stormclient.launcher.StormLauncher -C "$OUT/launcher" .
 
 # ---- smoke test ---------------------------------------------------
-if [ "${1:-}" = "test" ]; then
+if [ "${1:-}" = "test" ] || [ "${1:-}" = "preview" ]; then
     echo "[4/4] smoke test"
     find "$ROOT/storm-core/src/test/java" -name '*.java' > "$OUT/test.txt"
     "$JAVAC" --release 8 -encoding UTF-8 -nowarn -cp "$OUT/core" -d "$OUT/test" @"$OUT/test.txt"
     "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.StormSmokeTest
+
+    # paints the real menu into a PNG, so its layout can be checked without a game
+    if [ "${1:-}" = "preview" ]; then
+        mkdir -p "$ROOT/preview"
+        for size in "960 540" "480 270"; do
+            set -- $size
+            "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.GuiPreview \
+                    "$1" "$2" "$ROOT/preview/clickgui-$1x$2.png"
+        done
+        "$JAVA" -cp "$OUT/core:$OUT/test" xyz.stormclient.test.preview.GuiPreview \
+                960 540 "$ROOT/preview/hud-960x540.png" hud
+    fi
 else
     echo "[4/4] smoke test      skipped (run ./build.sh test to include it)"
 fi

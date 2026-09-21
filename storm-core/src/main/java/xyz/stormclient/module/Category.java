@@ -2,13 +2,13 @@ package xyz.stormclient.module;
 
 public enum Category {
 
-    COMBAT   ("Combat",   "\u2694"),
-    MOVEMENT ("Movement", "\u21c9"),
-    PLAYER   ("Player",   "\u263a"),
-    RENDER   ("Render",   "\u25c9"),
-    WORLD    ("World",    "\u25a6"),
-    HUD      ("HUD",      "\u25a4"),
-    MISC     ("Misc",     "\u2699");
+    COMBAT   ("Combat",   "C"),
+    MOVEMENT ("Movement", "M"),
+    PLAYER   ("Player",   "P"),
+    RENDER   ("Render",   "R"),
+    WORLD    ("World",    "W"),
+    HUD      ("HUD",      "H"),
+    MISC     ("Misc",     "X");
 
     private final String label;
     private final String icon;
@@ -19,5 +19,11 @@ public enum Category {
     }
 
     public String label() { return label; }
+
+    /**
+     * A one letter stand in. The click GUI draws a pictogram instead
+     * ({@link xyz.stormclient.ui.Glyphs#category}); this is only what text-only
+     * surfaces such as the chat fall back to.
+     */
     public String icon()  { return icon; }
 }

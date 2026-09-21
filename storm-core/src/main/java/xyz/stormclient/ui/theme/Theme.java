@@ -9,11 +9,12 @@ import xyz.stormclient.util.ColorUtil;
 public final class Theme {
 
     public enum Preset {
-        STORM   (0xFF35C4FF, 0xFF0E1116, 0xFF151A21),   // the default blue
-        MIDNIGHT(0xFF7A5CFF, 0xFF0B0B12, 0xFF141420),
-        EMBER   (0xFFFF7A3D, 0xFF141010, 0xFF1E1615),
-        MINT    (0xFF45E0A0, 0xFF0C1412, 0xFF14201C),
-        LIGHT   (0xFF2F80ED, 0xFFF2F4F8, 0xFFFFFFFF);
+        STORM   (0xFF4C7DFF, 0xFF070912, 0xFF10131E),   // the default electric blue
+        MIDNIGHT(0xFF7C6CFF, 0xFF06060E, 0xFF0F0F1A),
+        EMBER   (0xFFFF6B3D, 0xFF100A09, 0xFF1A1211),
+        MINT    (0xFF2FE0A6, 0xFF06120F, 0xFF0E1C18),
+        ROSE    (0xFFFF5C8A, 0xFF100810, 0xFF1B111A),
+        LIGHT   (0xFF2F6BED, 0xFFEDF0F6, 0xFFFFFFFF);
 
         public final int accent;
         public final int background;
@@ -29,12 +30,12 @@ public final class Theme {
     private Preset preset = Preset.STORM;
     private int accent = Preset.STORM.accent;
     private boolean rainbow;
-    private float radius = 6F;
+    private float radius = 5F;
     private float animationSpeed = 6F;
     private boolean shadows = true;
     private boolean blur = true;
     private String font = "storm";
-    private int fontSize = 18;
+    private int fontSize = 10;
 
     public Preset preset() { return preset; }
 
@@ -52,12 +53,15 @@ public final class Theme {
 
     public int background()  { return preset.background; }
     public int panel()       { return preset.panel; }
-    public int panelLight()  { return ColorUtil.brighter(preset.panel, 1.35F); }
-    public int panelDark()   { return ColorUtil.darker(preset.panel, 0.7F); }
-    public int outline()     { return ColorUtil.withAlpha(ColorUtil.brighter(preset.panel, 2.2F), 90); }
-    public int text()        { return preset == Preset.LIGHT ? 0xFF16181D : 0xFFE9EDF4; }
-    public int textDim()     { return ColorUtil.withAlpha(text(), 150); }
-    public int textFaint()   { return ColorUtil.withAlpha(text(), 90); }
+    public int panelLight()  { return ColorUtil.brighter(preset.panel, 1.45F); }
+    public int panelDark()   { return ColorUtil.darker(preset.panel, 0.55F); }
+
+    /** A hairline that reads as an edge without turning into a hard border. */
+    public int outline()     { return ColorUtil.withAlpha(text(), preset == Preset.LIGHT ? 26 : 22); }
+
+    public int text()        { return preset == Preset.LIGHT ? 0xFF14161C : 0xFFF2F4FA; }
+    public int textDim()     { return ColorUtil.withAlpha(text(), 165); }
+    public int textFaint()   { return ColorUtil.withAlpha(text(), 105); }
     public int overlay()     { return 0x66000000; }
 
     public float radius()    { return radius; }

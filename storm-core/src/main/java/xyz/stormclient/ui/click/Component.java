@@ -1,5 +1,6 @@
 package xyz.stormclient.ui.click;
 
+import xyz.stormclient.ui.UiScale;
 import xyz.stormclient.Storm;
 import xyz.stormclient.bridge.Bridge;
 import xyz.stormclient.bridge.IFontRenderer;
@@ -38,5 +39,5 @@ public abstract class Component {
 
     protected IRenderer r()      { return Bridge.mc().renderer(); }
     protected Theme theme()      { return Storm.get().theme(); }
-    protected IFontRenderer font(){ return Bridge.mc().font(theme().font(), 16); }
+    protected IFontRenderer font(){ return Bridge.mc().font(theme().font(), UiScale.COMPONENT_FONT); }
 }

@@ -15,3 +15,4 @@ storm-launcher.json
 build-out/
 dist/
 storm-bridge-1.8.9/workspace/run/
+preview/

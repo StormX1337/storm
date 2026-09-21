@@ -1,5 +1,6 @@
 package xyz.stormclient.ui.click;
 
+import xyz.stormclient.ui.UiScale;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,6 +10,7 @@ import xyz.stormclient.bridge.IFontRenderer;
 import xyz.stormclient.bridge.IRenderer;
 import xyz.stormclient.module.Category;
 import xyz.stormclient.module.Module;
+import xyz.stormclient.ui.Glyphs;
 import xyz.stormclient.ui.theme.Theme;
 import xyz.stormclient.util.Animation;
 import xyz.stormclient.util.ColorUtil;
@@ -17,15 +19,23 @@ import xyz.stormclient.util.MathUtil;
 /** One draggable category window. */
 public final class Panel {
 
-    public static final double HEADER = 20;
-    public static final double WIDTH  = 122;
-    private static final double MAX_HEIGHT = 240;
+    public static final double HEADER = 19;
+    /** Only a starting point: every panel sizes itself to its longest row. */
+    public static final double WIDTH = 116;
+
+    private static final double MIN_WIDTH = 96;
+    private static final double MAX_WIDTH = 160;
+    private static final double PADDING = 8;
 
     private final Category category;
     private final List<ModuleButton> buttons = new ArrayList<ModuleButton>();
     private final Animation openAnim = new Animation(8F);
+    private final Animation hoverAnim = new Animation(9F);
 
     private double x, y;
+    private double width = WIDTH;
+    private boolean measured;
+    private double maxHeight = 240;
     private boolean open = true;
     private boolean dragging;
     private double dragOffsetX, dragOffsetY;
@@ -47,7 +57,30 @@ public final class Panel {
     public boolean open() { return open; }
     public void setOpen(boolean open) { this.open = open; openAnim.set(open); }
     public void setPosition(double x, double y) { this.x = x; this.y = y; }
+    public void setMaxHeight(double maxHeight) { this.maxHeight = Math.max(60, maxHeight); }
     public List<ModuleButton> buttons() { return buttons; }
+
+    /**
+     * Wide enough for the longest module row, so nothing ever has to be drawn
+     * over its neighbour. Measured once, because the font does not change while
+     * the menu is open.
+     */
+    public double width() {
+        if (measured) return width;
+        IFontRenderer font = Bridge.mc().font(Storm.get().theme().font(), UiScale.ROW_FONT);
+        IFontRenderer head = Bridge.mc().font(Storm.get().theme().font(), UiScale.HEADER_FONT);
+
+        double widest = head.width(category.label()) + HEADER + 14;
+        for (ModuleButton button : buttons) {
+            double row = font.width(button.module().name());
+            String tag = button.module().tag();
+            if (tag != null && !tag.isEmpty()) row += 6 + font.width(tag);
+            widest = Math.max(widest, row + PADDING * 2 + ModuleButton.ARROW_ROOM);
+        }
+        width = MathUtil.clamp(Math.ceil(widest), MIN_WIDTH, MAX_WIDTH);
+        measured = true;
+        return width;
+    }
 
     public double contentHeight() {
         double h = 0;
@@ -55,38 +88,57 @@ public final class Panel {
         return h;
     }
 
+    private double bodyLimit() {
+        return Math.min(maxHeight, contentHeight());
+    }
+
     private double visibleHeight() {
-        return Math.min(MAX_HEIGHT, contentHeight()) * openAnim.eased();
+        return bodyLimit() * openAnim.eased();
     }
 
     public void render(int mouseX, int mouseY, String filter) {
         IRenderer r = Bridge.mc().renderer();
         Theme theme = Storm.get().theme();
-        IFontRenderer font = Bridge.mc().font(theme.font(), 17);
+        IFontRenderer font = Bridge.mc().font(theme.font(), UiScale.HEADER_FONT);
 
+        double w = width();
         double bodyHeight = visibleHeight();
         double total = HEADER + bodyHeight;
 
-        if (theme.shadows()) r.shadow(x, y, WIDTH, total, theme.radius(), 0x50000000);
-        if (theme.blur()) r.blur(x, y, WIDTH, total, 6F);
+        hoverAnim.set(MathUtil.inside(mouseX, mouseY, x, y, w, HEADER));
+        float hover = hoverAnim.eased();
 
-        r.roundedRect(x, y, WIDTH, total, theme.radius(), ColorUtil.withAlpha(theme.panel(), 240));
-        r.roundedRectOutline(x, y, WIDTH, total, theme.radius(), 1F, theme.outline());
+        if (theme.shadows()) r.shadow(x, y, w, total, theme.radius(), 0x66000000);
+        if (theme.blur()) r.blur(x, y, w, total, 6F);
 
-        // header
-        r.roundedRect(x, y, WIDTH, HEADER, theme.radius(), ColorUtil.withAlpha(theme.panelLight(), 255));
-        r.rect(x, y + HEADER - 1, WIDTH, 1, ColorUtil.withAlpha(theme.accent(), 120));
-        font.draw(category.icon(), x + 8, y + 6, theme.accent());
-        font.draw(category.label(), x + 20, y + 6, theme.text());
-        font.draw(open ? "\u2212" : "+", x + WIDTH - 12, y + 6, theme.textDim());
+        r.roundedRect(x, y, w, total, theme.radius(), ColorUtil.withAlpha(theme.panel(), 246));
+
+        // header: a slight lift out of the body, with the accent underlining it
+        r.roundedRect(x, y, w, HEADER, theme.radius(), theme.panelLight());
+        r.rect(x, y + HEADER - 4, w, 4, theme.panelLight());
+        r.gradientRectH(x, y + HEADER - 1, w, 1,
+                ColorUtil.withAlpha(theme.accent(), (int) (120 + 110 * hover)),
+                ColorUtil.withAlpha(theme.accent(), 20));
+
+        double iconSize = 9;
+        Glyphs.category(r, category, x + PADDING, y + (HEADER - iconSize) / 2, iconSize,
+                ColorUtil.mix(theme.accent(), 0xFFFFFFFF, hover * 0.35F));
+        font.draw(category.label(), x + PADDING + iconSize + 6,
+                y + (HEADER - font.height()) / 2.0, theme.text());
+
+        double markSize = 6;
+        Glyphs.collapse(r, x + w - PADDING - markSize, y + (HEADER - markSize) / 2, markSize, open,
+                ColorUtil.mix(theme.textFaint(), theme.text(), hover));
+
+        r.roundedRectOutline(x, y, w, total, theme.radius(), 1F, theme.outline());
 
         if (bodyHeight <= 0.01) return;
 
-        r.scissorBegin(x, y + HEADER, WIDTH, bodyHeight);
-        double by = y + HEADER - scroll;
+        r.scissorBegin(x, y + HEADER, w, bodyHeight);
+        double by = y + HEADER + 2 - scroll;
         for (ModuleButton button : buttons) {
             if (!matches(button, filter)) continue;
-            button.position(x, by, WIDTH);
+            button.position(x, by, w);
             if (by + button.height() >= y + HEADER && by <= y + HEADER + bodyHeight) {
                 button.render(mouseX, mouseY);
             }
@@ -94,13 +146,17 @@ public final class Panel {
         }
         r.scissorEnd();
 
-        // scrollbar
-        double content = contentHeight();
-        if (content > MAX_HEIGHT) {
-            double ratio = MAX_HEIGHT / content;
-            double barHeight = bodyHeight * ratio;
-            double barY = y + HEADER + (bodyHeight - barHeight) * (scroll / Math.max(1, content - MAX_HEIGHT));
-            r.roundedRect(x + WIDTH - 3, barY, 2, barHeight, 1F, ColorUtil.withAlpha(theme.accent(), 140));
+        // scrollbar, only while there is something to scroll
+        double content = contentHeight() + 4;
+        double limit = bodyLimit();
+        if (content > limit) {
+            double ratio = limit / content;
+            double barHeight = Math.max(12, bodyHeight * ratio);
+            double travel = bodyHeight - barHeight;
+            double barY = y + HEADER + travel * (scroll / Math.max(1, content - limit));
+            r.roundedRect(x + w - 3.5, y + HEADER + 1, 2, bodyHeight - 2, 1F,
+                    ColorUtil.withAlpha(theme.text(), 18));
+            r.roundedRect(x + w - 3.5, barY, 2, barHeight, 1F, ColorUtil.withAlpha(theme.accent(), 190));
         }
     }
 
@@ -110,7 +166,8 @@ public final class Panel {
     }
 
     public void mouseDown(int mouseX, int mouseY, int button) {
-        if (MathUtil.inside(mouseX, mouseY, x, y, WIDTH, HEADER)) {
+        double w = width();
+        if (MathUtil.inside(mouseX, mouseY, x, y, w, HEADER)) {
             if (button == 0) {
                 dragging = true;
                 dragOffsetX = mouseX - x;
@@ -121,7 +178,7 @@ public final class Panel {
             return;
         }
         if (!open) return;
-        if (!MathUtil.inside(mouseX, mouseY, x, y + HEADER, WIDTH, visibleHeight())) return;
+        if (!MathUtil.inside(mouseX, mouseY, x, y + HEADER, w, visibleHeight())) return;
         for (ModuleButton b : buttons) b.mouseDown(mouseX, mouseY, button);
     }
 
@@ -140,8 +197,8 @@ public final class Panel {
     }
 
     public void scroll(int amount, int mouseX, int mouseY) {
-        if (!MathUtil.inside(mouseX, mouseY, x, y, WIDTH, HEADER + visibleHeight())) return;
-        double max = Math.max(0, contentHeight() - MAX_HEIGHT);
+        if (!MathUtil.inside(mouseX, mouseY, x, y, width(), HEADER + visibleHeight())) return;
+        double max = Math.max(0, contentHeight() + 4 - bodyLimit());
         scroll = MathUtil.clamp(scroll - amount * 12, 0, max);
     }
 

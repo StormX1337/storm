@@ -1,5 +1,6 @@
 package xyz.stormclient.ui.click;
 
+import xyz.stormclient.ui.UiScale;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,6 +10,7 @@ import xyz.stormclient.bridge.IFontRenderer;
 import xyz.stormclient.bridge.IRenderer;
 import xyz.stormclient.module.Module;
 import xyz.stormclient.setting.Setting;
+import xyz.stormclient.ui.Glyphs;
 import xyz.stormclient.ui.theme.Theme;
 import xyz.stormclient.util.Animation;
 import xyz.stormclient.util.ColorUtil;
@@ -16,7 +18,11 @@ import xyz.stormclient.util.MathUtil;
 
 public final class ModuleButton {
 
-    public static final double ROW_HEIGHT = 16;
+    public static final double ROW_HEIGHT = 14;
+    /** Space kept free on the right of a row for the expand arrow. */
+    public static final double ARROW_ROOM = 10;
+
+    private static final double PADDING = 8;
 
     private final Module module;
     private final List<Component> components = new ArrayList<Component>();
@@ -50,12 +56,12 @@ public final class ModuleButton {
     }
 
     private double settingsHeight() {
-        double h = 2;
+        double h = 3;
         for (Component c : components) {
             if (!c.setting().visible()) continue;
             h += c.height();
         }
-        return h + 2;
+        return h + 3;
     }
 
     public void position(double x, double y, double width) {
@@ -67,30 +73,51 @@ public final class ModuleButton {
     public void render(int mouseX, int mouseY) {
         IRenderer r = Bridge.mc().renderer();
         Theme theme = Storm.get().theme();
-        IFontRenderer font = Bridge.mc().font(theme.font(), 16);
+        IFontRenderer font = Bridge.mc().font(theme.font(), UiScale.ROW_FONT);
 
         boolean hover = MathUtil.inside(mouseX, mouseY, x, y, width, ROW_HEIGHT);
         hoverAnim.set(hover);
         float hoverT = hoverAnim.eased();
         float enabledT = module.animation.eased();
 
-        if (hoverT > 0.001F) {
-            r.rect(x, y, width, ROW_HEIGHT, ColorUtil.withAlpha(theme.accent(), (int) (28 * hoverT)));
-        }
+        // an enabled module reads as a filled row, a hovered one only lifts a little
         if (enabledT > 0.001F) {
-            r.rect(x, y, 2.0 + hoverT, ROW_HEIGHT, ColorUtil.fade(theme.accent(), enabledT));
+            r.gradientRectH(x, y, width, ROW_HEIGHT,
+                    ColorUtil.withAlpha(theme.accent(), (int) (46 * enabledT)),
+                    ColorUtil.withAlpha(theme.accent(), (int) (8 * enabledT)));
+            r.rect(x, y, 2, ROW_HEIGHT, ColorUtil.fade(theme.accent(), enabledT));
+        }
+        if (hoverT > 0.001F) {
+            r.rect(x + (enabledT > 0.001F ? 2 : 0), y, width - (enabledT > 0.001F ? 2 : 0), ROW_HEIGHT,
+                    ColorUtil.withAlpha(theme.text(), (int) (14 * hoverT)));
         }
 
-        int textColor = ColorUtil.mix(theme.textDim(), theme.text(), Math.max(hoverT, enabledT));
-        font.draw(module.name(), x + 8, y + 4, textColor);
+        double textY = y + (ROW_HEIGHT - font.height()) / 2.0;
+        double right = x + width - PADDING;
+        if (!components.isEmpty()) right -= ARROW_ROOM;
 
+        // the tag sits against the right edge, so a long mode name can never
+        // run over the module next to it
         String tag = module.tag();
         if (tag != null && !tag.isEmpty()) {
-            font.draw(tag, x + 10 + font.width(module.name()), y + 4, theme.textFaint());
+            double room = right - (x + PADDING) - font.width(module.name()) - 6;
+            String shown = font.width(tag) > room ? font.trim(tag, (int) Math.max(0, room)) : tag;
+            if (room > 8) {
+                font.draw(shown, right - font.width(shown), textY, theme.textFaint());
+                right -= font.width(shown) + 6;
+            }
         }
+
+        int textColor = enabledT > 0.5F
+                ? ColorUtil.mix(theme.text(), 0xFFFFFFFF, enabledT)
+                : ColorUtil.mix(theme.textDim(), theme.text(), Math.max(hoverT, enabledT));
+        font.draw(font.trim(module.name(), (int) Math.max(8, right - x - PADDING)),
+                x + PADDING, textY, textColor);
+
         if (!components.isEmpty()) {
-            String arrow = expanded ? "\u25b4" : "\u25be";
-            font.draw(arrow, x + width - 12, y + 4, theme.textFaint());
+            double size = 5;
+            Glyphs.chevron(r, x + width - PADDING - size + 2, y + (ROW_HEIGHT - size / 2) / 2, size,
+                    expanded, ColorUtil.mix(theme.textFaint(), theme.accent(), Math.max(hoverT, openAnim.eased())));
         }
 
         float t = openAnim.eased();
@@ -98,12 +125,13 @@ public final class ModuleButton {
 
         double contentHeight = settingsHeight() * t;
         r.scissorBegin(x, y + ROW_HEIGHT, width, contentHeight);
-        r.rect(x, y + ROW_HEIGHT, width, contentHeight, ColorUtil.withAlpha(0xFF000000, 45));
+        r.rect(x, y + ROW_HEIGHT, width, contentHeight, ColorUtil.withAlpha(0xFF000000, 60));
+        r.rect(x, y + ROW_HEIGHT, 1, contentHeight, ColorUtil.withAlpha(theme.accent(), 90));
 
-        double cy = y + ROW_HEIGHT + 2;
+        double cy = y + ROW_HEIGHT + 3;
         for (Component c : components) {
             if (!c.setting().visible()) continue;
-            c.position(x + 6, cy, width - 12);
+            c.position(x + 5, cy, width - 10);
             c.render(mouseX, mouseY);
             cy += c.height();
         }

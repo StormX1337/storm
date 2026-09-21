@@ -1,5 +1,6 @@
 package xyz.stormclient.ui.hud;
 
+import xyz.stormclient.ui.UiScale;
 import java.util.List;
 
 import xyz.stormclient.Storm;
@@ -36,7 +37,7 @@ public final class HudEditorScreen extends Screen {
 
     @Override public void render(int mouseX, int mouseY, float partialTicks) {
         IRenderer r = r();
-        IFontRenderer font = font(16);
+        IFontRenderer font = font(UiScale.HUD_FONT);
 
         r.rect(0, 0, width, height, ColorUtil.withAlpha(0xFF000000, 120));
         drawGuides(r);
