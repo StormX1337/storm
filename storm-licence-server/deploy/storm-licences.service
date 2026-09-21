@@ -1,0 +1,42 @@
+# /etc/systemd/system/storm-licences.service
+#
+#   systemctl daemon-reload
+#   systemctl enable --now storm-licences
+#   journalctl -u storm-licences -f
+
+[Unit]
+Description=Storm licence server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=storm
+Group=storm
+WorkingDirectory=/opt/storm-licences
+ExecStart=/usr/bin/java -Xms64m -Xmx256m \
+          -jar /opt/storm-licences/storm-licence-server.jar \
+          /opt/storm-licences/storm-licences.properties
+Restart=on-failure
+RestartSec=5
+
+# The service holds the key that signs every licence, so it gets no more of
+# the system than it needs.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/storm-licences
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+# a JVM compiles code at runtime, so pages have to be writable and executable
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target

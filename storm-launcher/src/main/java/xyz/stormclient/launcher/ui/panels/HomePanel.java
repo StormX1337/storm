@@ -16,6 +16,7 @@ import xyz.stormclient.launcher.core.GameDirectories;
 import xyz.stormclient.launcher.core.GameLauncher;
 import xyz.stormclient.launcher.core.Injector;
 import xyz.stormclient.launcher.core.LauncherConfig;
+import xyz.stormclient.launcher.core.LicenceClient;
 import xyz.stormclient.launcher.core.Log;
 import xyz.stormclient.launcher.core.MinecraftVersion;
 import xyz.stormclient.launcher.core.ProfileInstaller;
@@ -102,6 +103,37 @@ public final class HomePanel extends BasePanel {
         this.statusColor = color;
     }
 
+    /**
+     * The licence to start the game with, refreshed against the server first.
+     *
+     * <p>Refreshing on every launch is what makes a revoked key stop working:
+     * the signed licence only lasts days, so the server gets a say without the
+     * client ever needing it to be up. A server that cannot be reached is not a
+     * reason to keep a paying customer out, so the cached licence is used; a
+     * server that answers and says no clears it.
+     */
+    private String currentLicence() {
+        if (config.licenceServer().isEmpty() || config.licenceKey().isEmpty()) {
+            return config.licence();
+        }
+        LicenceClient.Result result =
+                LicenceClient.activate(config.licenceServer(), config.licenceKey());
+        if (result.ok()) {
+            config.setLicence(result.licence);
+            config.save();
+            Log.info("licence refreshed for " + result.holder);
+            return result.licence;
+        }
+        if (result.refused) {
+            config.setLicence("");
+            config.save();
+            Log.warn("licence refused: " + result.error);
+            return "";
+        }
+        Log.warn("could not refresh the licence, using the stored one: " + result.error);
+        return config.licence();
+    }
+
     private void onVersionSelected(MinecraftVersion version) {
         config.setVersion(version.id());
         config.save();
@@ -122,14 +154,13 @@ public final class HomePanel extends BasePanel {
         options.debug = config.debug();
         options.agentOptions = Injector.buildOptions(version.id(), config.configProfile(),
                 options.bridgeJar, config.debug());
-        options.licence = config.licence();
-
         launch.setLoading(true);
         setStatus("starting " + version.id() + "...", StormTheme.TEXT_DIM);
         repaint();
 
         new Thread(() -> {
             try {
+                options.licence = currentLicence();
                 GameLauncher.launch(options, Log::info);
                 SwingUtilities.invokeLater(() -> {
                     launch.setLoading(false);

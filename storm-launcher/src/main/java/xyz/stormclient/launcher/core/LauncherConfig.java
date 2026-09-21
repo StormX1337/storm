@@ -100,6 +100,14 @@ public final class LauncherConfig {
     public String licence()                 { return get("licence", ""); }
     public void setLicence(String v)        { set("licence", v == null ? "" : v.trim()); }
 
+    /** The short key the customer was given, exchanged for the blob above. */
+    public String licenceKey()              { return get("licenceKey", ""); }
+    public void setLicenceKey(String v)     { set("licenceKey", v == null ? "" : v.trim()); }
+
+    /** Base URL of the licence server, empty for a build that needs no key. */
+    public String licenceServer()           { return get("licenceServer", ""); }
+    public void setLicenceServer(String v)  { set("licenceServer", v == null ? "" : v.trim()); }
+
     // ------------------------------------------------------------------
     private String get(String key, String fallback) { return properties.getProperty(key, fallback); }
     private void set(String key, String value)      { properties.setProperty(key, value); }

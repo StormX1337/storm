@@ -5,17 +5,22 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
-import java.awt.Toolkit;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 import xyz.stormclient.launcher.core.LauncherConfig;
+import xyz.stormclient.launcher.core.LicenceClient;
+import xyz.stormclient.launcher.core.Log;
 import xyz.stormclient.launcher.ui.StormButton;
 import xyz.stormclient.launcher.ui.StormTheme;
 import xyz.stormclient.launcher.ui.UiKit;
@@ -24,19 +29,22 @@ import xyz.stormclient.licence.LicenceVerifier;
 import xyz.stormclient.licence.MachineId;
 
 /**
- * Where the user pastes their key.
+ * Where the customer puts the key they were sold.
  *
- * <p>The launcher checks the signature here so a bad key is caught before the
- * game starts, and hands the blob to the client through a system property.
+ * <p>They type the short key; this asks the licence server to swap it for the
+ * signed licence the client actually checks. Pasting a signed licence straight
+ * in still works, for keys handed out by hand with no server running.
  */
 public final class LicencePanel extends BasePanel {
 
     private final LauncherConfig config;
-    private final JTextArea input = new JTextArea();
+    private final JTextField keyField = new JTextField();
+    private final JTextField serverField = new JTextField();
 
     private Licence licence;
     private String status = "";
     private Color statusColor = StormTheme.TEXT_DIM;
+    private boolean working;
 
     public LicencePanel(LauncherConfig config) {
         super("Licence", "The key Storm starts with");
@@ -46,14 +54,20 @@ public final class LicencePanel extends BasePanel {
         setLayout(new BorderLayout(0, 14));
         setBorder(BorderFactory.createEmptyBorder(headerHeight() + 56, 30, 24, 30));
 
-        add(keyField(), BorderLayout.NORTH);
+        JPanel fields = new JPanel(new GridLayout(0, 1, 0, 12));
+        fields.setOpaque(false);
+        keyField.setText(config.licenceKey());
+        serverField.setText(config.licenceServer());
+        fields.add(field("Licence key", keyField, config::setLicenceKey));
+        fields.add(field("Licence server", serverField, config::setLicenceServer));
+        add(fields, BorderLayout.NORTH);
 
         JPanel south = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
         south.setOpaque(false);
         south.add(button("Copy machine id", StormButton.Style.GHOST, 170, this::copyMachineId));
-        south.add(button("Paste", StormButton.Style.GHOST, 110, this::paste));
+        south.add(button("Paste", StormButton.Style.GHOST, 100, this::paste));
         south.add(button("Remove", StormButton.Style.GHOST, 110, this::remove));
-        south.add(button("Apply key", StormButton.Style.PRIMARY, 160, this::apply));
+        south.add(button("Activate", StormButton.Style.PRIMARY, 150, this::activate));
         add(south, BorderLayout.SOUTH);
     }
 
@@ -63,7 +77,7 @@ public final class LicencePanel extends BasePanel {
         return button;
     }
 
-    private JComponent keyField() {
+    private JComponent field(String label, JTextField input, Consumer<String> onChange) {
         JPanel holder = new JPanel(new BorderLayout(0, 4)) {
             @Override protected void paintComponent(Graphics graphics) {
                 Graphics2D g = UiKit.prepare((Graphics2D) graphics.create());
@@ -75,24 +89,24 @@ public final class LicencePanel extends BasePanel {
             }
         };
         holder.setOpaque(false);
-        holder.setPreferredSize(new Dimension(0, 118));
 
-        JLabel title = new JLabel("Licence key");
+        JLabel title = new JLabel(label);
         title.setForeground(StormTheme.TEXT_DIM);
         title.setFont(StormTheme.font(12));
 
-        input.setText(config.licence());
-        input.setLineWrap(true);
-        input.setWrapStyleWord(false);
         input.setBorder(BorderFactory.createEmptyBorder(9, 12, 9, 12));
         input.setBackground(new Color(0, 0, 0, 0));
         input.setOpaque(false);
         input.setForeground(StormTheme.TEXT);
         input.setCaretColor(StormTheme.ACCENT);
-        input.setFont(StormTheme.font(12));
+        input.setFont(StormTheme.font(13));
         input.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override public void focusGained(java.awt.event.FocusEvent e) { holder.repaint(); }
-            @Override public void focusLost(java.awt.event.FocusEvent e)   { holder.repaint(); }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                onChange.accept(input.getText().trim());
+                config.save();
+                holder.repaint();
+            }
         });
 
         holder.add(title, BorderLayout.NORTH);
@@ -101,69 +115,104 @@ public final class LicencePanel extends BasePanel {
     }
 
     // ------------------------------------------------------------------
-    private void apply() {
-        String blob = input.getText().replaceAll("\\s+", "");
-        // with no public key compiled in there is nothing to check against, so
-        // say that rather than reporting an unchecked key as accepted
+    private void activate() {
+        if (working) return;
+        String typed = keyField.getText().replaceAll("\\s+", "");
+        config.setLicenceKey(typed);
+        config.setLicenceServer(serverField.getText().trim());
+        config.save();
+
+        // a signed licence pasted straight in needs no server at all
+        if (typed.startsWith("STORM1.")) {
+            applyBlob(typed, "key accepted");
+            return;
+        }
+
+        if (config.licenceServer().isEmpty()) {
+            say("enter your licence server's address as well, "
+                    + "or paste a signed licence instead", StormTheme.RED);
+            return;
+        }
+
+        working = true;
+        say("asking " + config.licenceServer() + "...", StormTheme.TEXT_DIM);
+        new Thread(() -> {
+            LicenceClient.Result result = LicenceClient.activate(config.licenceServer(), typed);
+            SwingUtilities.invokeLater(() -> {
+                working = false;
+                if (result.ok()) {
+                    applyBlob(result.licence, "activated for " + result.holder);
+                } else {
+                    if (result.refused) {
+                        // the server made a decision, so the old licence is stale
+                        config.setLicence("");
+                        config.save();
+                        licence = LicenceVerifier.verify("");
+                    }
+                    say(result.error, result.refused ? StormTheme.RED : StormTheme.TEXT_DIM);
+                    Log.warn("licence: " + result.error);
+                }
+            });
+        }, "storm-licence").start();
+    }
+
+    private void applyBlob(String blob, String success) {
+        // with no public key compiled in there is nothing to check it against,
+        // so say that rather than reporting an unchecked key as accepted
         if (!LicenceVerifier.enforced()) {
             config.setLicence(blob);
             config.save();
             licence = LicenceVerifier.verify(blob);
-            status = blob.isEmpty()
-                    ? "nothing to store"
-                    : "stored, but this build does not check keys";
-            statusColor = StormTheme.TEXT_DIM;
-            repaint();
+            say("stored, but this build does not check keys", StormTheme.TEXT_DIM);
             return;
         }
         Licence checked = LicenceVerifier.verify(blob);
         if (!checked.valid()) {
-            status = checked.reason();
-            statusColor = StormTheme.RED;
-            repaint();
+            say(checked.reason(), StormTheme.RED);
             return;
         }
         config.setLicence(blob);
         config.save();
         licence = checked;
-        status = "key accepted";
-        statusColor = StormTheme.GREEN;
-        repaint();
+        say(success, StormTheme.GREEN);
     }
 
     private void remove() {
-        input.setText("");
+        keyField.setText("");
         config.setLicence("");
+        config.setLicenceKey("");
         config.save();
         licence = LicenceVerifier.verify("");
-        status = "key removed";
-        statusColor = StormTheme.TEXT_DIM;
-        repaint();
+        say("key removed", StormTheme.TEXT_DIM);
     }
 
     private void paste() {
         try {
             Object clip = Toolkit.getDefaultToolkit().getSystemClipboard()
                     .getData(DataFlavor.stringFlavor);
-            if (clip != null) input.setText(String.valueOf(clip).trim());
+            if (clip != null) keyField.setText(String.valueOf(clip).trim());
         } catch (Exception e) {
-            status = "nothing to paste";
-            statusColor = StormTheme.TEXT_DIM;
+            say("nothing to paste", StormTheme.TEXT_DIM);
         }
         repaint();
     }
 
-    /** What the user sends you so you can bind their key to their computer. */
+    /** What the customer sends you so you can tie their key to their computer. */
     private void copyMachineId() {
         Toolkit.getDefaultToolkit().getSystemClipboard()
                 .setContents(new StringSelection(MachineId.get()), null);
-        status = "machine id copied: " + MachineId.get();
-        statusColor = StormTheme.ACCENT;
+        say("machine id copied: " + MachineId.get(), StormTheme.ACCENT);
+    }
+
+    private void say(String message, Color color) {
+        status = message;
+        statusColor = color;
         repaint();
     }
 
     public void refresh() {
-        input.setText(config.licence());
+        keyField.setText(config.licenceKey());
+        serverField.setText(config.licenceServer());
         licence = LicenceVerifier.verify(config.licence());
         repaint();
     }

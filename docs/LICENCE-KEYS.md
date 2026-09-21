@@ -84,6 +84,9 @@ when it runs out.
 
 ## Revoking
 
+Running a licence server (`docs/LICENCE-SERVER.md`) gives you real revocation.
+Without one:
+
 A signed key cannot be taken back on its own, because the check is offline.
 Two ways to handle it:
 
